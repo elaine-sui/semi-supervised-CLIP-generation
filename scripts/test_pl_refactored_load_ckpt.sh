@@ -1,0 +1,1 @@
+python3 run.py --config configs/clip_prefix_cap_refactored_test_pretrained_only.yaml --test --debug

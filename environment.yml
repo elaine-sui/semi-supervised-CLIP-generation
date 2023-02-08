@@ -6,8 +6,16 @@ dependencies:
 - pip>=21
 - scikit-image=0.18.1
 - pip:
-   - transformers~=4.10.2
+   - transformers
    - ftfy
    - regex
    - tqdm
    - git+https://github.com/openai/CLIP.git
+   - omegaconf==2.1.1
+   - pytorch_lightning
+   - requests
+   - timm
+   - git+https://github.com/flauted/coco-caption.git@python23
+   - wandb
+   - numpy
+prefix: /pasteur/u/esui/miniconda3/envs/semi_supervised_clip
