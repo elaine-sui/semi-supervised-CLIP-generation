@@ -1,0 +1,1 @@
+python3 run.py --config configs/text_to_image_generation/text_to_image_generation.yaml --train --debug --test

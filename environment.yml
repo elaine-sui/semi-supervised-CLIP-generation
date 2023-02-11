@@ -18,4 +18,5 @@ dependencies:
    - git+https://github.com/flauted/coco-caption.git@python23
    - wandb
    - numpy
+   - pandas
 prefix: /pasteur/u/esui/miniconda3/envs/semi_supervised_clip

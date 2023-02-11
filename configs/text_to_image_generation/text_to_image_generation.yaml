@@ -1,5 +1,4 @@
-experiment_name: 'clip_prefix_cap_refactored'
-stage: 'unimodal'
+experiment_name: 'coco_stage2_image_generation'
 
 lightning:
   trainer:
@@ -9,7 +8,8 @@ lightning:
     lr: 2e-5
     precision: 16
     auto_lr_find: false
-    limit_val_batches: 0
+    limit_val_batches: 2
+    limit_train_batches: 2
   checkpoint_callback:
     monitor: 'train_loss_epoch'
     dirpath: '/pasteur/u/esui/data/coco/ckpt'
@@ -29,13 +29,15 @@ lightning:
     project: 'clip_prefix_cap_coco'
 
 encoder:
-    modality: 'language' # 'language', 'both'
+    clip_model_type: 'ViT-B/32'
+    modality: 'language' # 'vision' 'language', 'both'
     embed_dim: 512
-    clip_model_type: 'ViT-B/32' # ignored if modality is language
+
 
 decoder:
+    modality: 'vision' # 'vision' 'language'
+    
     # Decode to language (ignored if modality is image)
-    modality: 'language'
     model: 'gpt2'
     
     # Decode to image (ignored if modality is language)
@@ -52,7 +54,7 @@ decoder:
 model: 
   num_layers: 8
   mapping_type: 'mlp'
-  prefix_length: 10
+  prefix_length: 50 # roughly 25% of the patches in 224x224
   clip_size: 10
   normalize_prefix: False
   is_rn: False
@@ -61,10 +63,10 @@ model:
 data: 
   dataset: 'coco'
   seed: 1234
+  train_split: 'train' # train, restval, train+restval
   train_data_path: '/pasteur/u/esui/data/coco/oscar_split_ViT-B_32_train.pkl'
   val_data_path: '/pasteur/u/esui/data/coco/oscar_split_ViT-B_32_val.pkl'
   test_data_path: '/pasteur/u/esui/data/coco/oscar_split_ViT-B_32_test.pkl'
-  restval_data_path: '/pasteur/u/esui/data/coco/oscar_split_ViT-B_32_restval.pkl'
   out_dir: '/pasteur/u/esui/data/coco/clip_prefix_cap_refactored_ckpts'
     
 train: 
@@ -72,7 +74,7 @@ train:
   num_workers: 8
   warmup_epochs: 2 # warmup_steps = 5000 (warmup_epochs = 414113 (num_steps_per_epoch) / 5000)
   loss_fn: 
-    name: 'ce_caption_loss'
+    name: 'image_reconstruction_loss'
   optimizer: 
     name: 'AdamW'
 

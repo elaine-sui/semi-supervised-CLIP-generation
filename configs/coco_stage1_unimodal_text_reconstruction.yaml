@@ -1,27 +1,26 @@
-experiment_name: 'clip_prefix_cap_refactored'
-stage: 'cross-modal'
+experiment_name: 'coco_stage1_unimodal_text_reconstruction'
 
 lightning:
   trainer:
     gpus: 1
     #distributed_backend: 'ddp'
-    max_epochs: 2
+    max_epochs: 10
     lr: 2e-5
     precision: 16
     auto_lr_find: false
-    limit_val_batches: 0
+    # limit_val_batches: 100
   checkpoint_callback:
-    monitor: 'train_loss_epoch'
+    monitor: 'val_loss_epoch'
     dirpath: '/pasteur/u/esui/data/coco/ckpt'
-    # save_last: true
+    save_last: true
     mode: 'min'
-    # save_top_k: 10
-  early_stopping_callback:
-    monitor: 'train_loss_epoch'
-    min_delta: 0.00
-    patience: 10
-    verbose: False
-    mode: 'min'
+    save_top_k: 3
+  # early_stopping_callback:
+  #   monitor: 'val_loss_epoch'
+  #   min_delta: 0.00
+  #   patience: 10
+  #   verbose: False
+  #   mode: 'min'
   logger:
     logger_type: 'WandbLogger'
     save_dir: '/pasteur/u/esui/data/logger/'
@@ -29,10 +28,9 @@ lightning:
     project: 'clip_prefix_cap_coco'
 
 encoder:
-    clip_model_type: 'ViT-B/32'
-    modality: 'vision' # 'language', 'both'
+    modality: 'language' # 'language', 'both'
     embed_dim: 512
-
+    clip_model_type: 'ViT-B/32' # ignored if modality is language
 
 decoder:
     # Decode to language (ignored if modality is image)
@@ -62,17 +60,22 @@ model:
 data: 
   dataset: 'coco'
   seed: 1234
+  train_split: 'restval' # 'train', 'restval', 'train+restval'
+  train_restval_data_path: '/pasteur/u/esui/data/coco/oscar_split_ViT-B_32_train+restval.pkl'
   train_data_path: '/pasteur/u/esui/data/coco/oscar_split_ViT-B_32_train.pkl'
   val_data_path: '/pasteur/u/esui/data/coco/oscar_split_ViT-B_32_val.pkl'
+  restval_data_path: '/pasteur/u/esui/data/coco/oscar_split_ViT-B_32_restval.pkl'
   test_data_path: '/pasteur/u/esui/data/coco/oscar_split_ViT-B_32_test.pkl'
   out_dir: '/pasteur/u/esui/data/coco/clip_prefix_cap_refactored_ckpts'
     
 train: 
   batch_size: 40
   num_workers: 8
-  warmup_epochs: 2 # warmup_steps = 5000 (warmup_epochs = 414113 (num_steps_per_epoch) / 5000)
   loss_fn: 
     name: 'ce_caption_loss'
   optimizer: 
     name: 'AdamW'
+  scheduler:
+    name: 'linear_schedule_with_warmup'
+    warmup_steps: 5000
 

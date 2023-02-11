@@ -2,6 +2,7 @@ import collections
 import json
 import os
 import yaml
+import pandas as pd
 
 def flatten(d, parent_key="", sep="."):
     """flatten a nested dictionary"""
@@ -43,6 +44,7 @@ def get_metrics_out_filename(output_dir, split):
 
 def add_predictions_to_results_json(predictions, output_dir, split):
     
+    os.makedirs(output_dir, exist_ok=True)
     filepath = get_pred_filename(output_dir, split)
     all_preds = []
     # if os.path.exists(filepath):

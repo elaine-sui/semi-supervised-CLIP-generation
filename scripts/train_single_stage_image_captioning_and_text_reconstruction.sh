@@ -1,0 +1,1 @@
+python3 run.py --config configs/coco_image_captioning_and_text_reconstruction.yaml --train --test

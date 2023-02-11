@@ -37,9 +37,16 @@ def parse_configs():
         help="specify to test model"
         "By default run.py trains a model based on config file",)
     parser.add_argument(
+        "--sample_frac", type=float, default=None, help="fraction of training set to sample")
+    parser.add_argument(
         "--test_split", type=str, default='test', help="test split")
     parser.add_argument(
         "--random_seed", type=int, default=1234, help="random seed")
+    
+    parser.add_argument(
+        "--checkpoint", type=str, default=None)
+    parser.add_argument(
+        "--output_dir", type=str, default='output')
     
     parser = Trainer.add_argparse_args(parser)
 
@@ -53,6 +60,15 @@ def parse_configs():
     cfg.hyperparameters = cli_flat  # hyperparameter defaults
     if args.gpus is not None:
         cfg.lightning.trainer.gpus = str(args.gpus)
+        
+    if args.checkpoint is not None:
+        cfg.checkpoint = args.checkpoint
+        if 'train+restval' in cfg.checkpoint:
+            cfg.experiment_name += "_stage1_train+restval"
+            
+    cfg.data.sample_frac = args.sample_frac 
+    if not OmegaConf.is_none(cfg.data, 'sample_frac'):
+        cfg.experiment_name += f"_frac{args.sample_frac}"
 
     cfg.test_split = args.test_split
     
@@ -69,7 +85,11 @@ def parse_configs():
         cfg.lightning.trainer.gpus = 1
         cfg.lightning.trainer.distributed_backend = None
     
+    cfg.seed = args.random_seed
     seed_everything(args.random_seed)
+    
+    if not OmegaConf.is_none(cfg.model, 'pretrain_ckpt'):
+        cfg.checkpoint = cfg.model.pretrain_ckpt
 
     return cfg, args
 
@@ -158,6 +178,11 @@ def setup(cfg, test_split=False):
     # get datamodule
     dm = builder.build_data_module(cfg)
     cfg.data.num_batches = len(dm.train_dataloader())
+    
+    # reduce number of warmup steps for small fractions to keep ratio of num warmup steps to 
+    # num batches in a single epoch the same
+    if not OmegaConf.is_none(cfg.data, 'sample_frac') and not OmegaConf.is_none(cfg.train, 'scheduler'):
+        cfg.train.scheduler.warmup_steps = int(cfg.train.scheduler.warmup_steps * cfg.data.sample_frac)
 
     # define lightning module
     model = builder.build_lightning_model(cfg)
@@ -192,6 +217,14 @@ def save_best_checkpoints(checkpoint_callback, cfg, return_best=True):
 if __name__ == "__main__":    
     cfg, args = parse_configs()
 
+    # Remove pre-trained sub-model checkpoint if full model checkpoint provided
+    if not OmegaConf.is_none(cfg, "checkpoint"):
+        if not OmegaConf.is_none(cfg.decoder, "checkpoint"):
+            cfg.decoder.pop('checkpoint')
+
+        if not OmegaConf.is_none(cfg.model, "checkpoint"):
+            cfg.model.pop('checkpoint')
+
     if args.train:
         trainer, model, dm, checkpoint_callback = setup(cfg)
         trainer.fit(model, dm)
@@ -206,10 +239,20 @@ if __name__ == "__main__":
             print("="*80)
             print(cfg.checkpoint)
             print("="*80)
-
+            
+            # Remove pre-trained model checkpoint
+            if not OmegaConf.is_none(cfg.decoder, "checkpoint"):
+                cfg.decoder.pop('checkpoint')
+                
+            if not OmegaConf.is_none(cfg.model, "checkpoint"):
+                cfg.model.pop('checkpoint')
+                
+            # Change train_split (unused anyway)
+            cfg.data.train_split = 'restval'
+            
             cfg.output_dir = '/'.join(cfg.checkpoint.split('/')[:-1]).replace('ckpt','output')
         else:
-            cfg.output_dir = 'output2'
+            cfg.output_dir = args.output_dir
             os.makedirs(cfg.output_dir, exist_ok=True)
         print(f'Output dir: {cfg.output_dir}')
         trainer, model, dm, checkpoint_callback = setup(cfg, test_split=True)

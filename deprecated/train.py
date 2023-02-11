@@ -370,8 +370,8 @@ def train(dataset: ClipCocoDataset, model: ClipCaptionModel, args,
     )
     # save_config(args)
     
-    losses = AverageMeter()
     for epoch in range(epochs):
+        losses = AverageMeter()
         print(f">>> Training epoch {epoch}")
         sys.stdout.flush()
         progress = tqdm(total=len(train_dataloader), desc=output_prefix)

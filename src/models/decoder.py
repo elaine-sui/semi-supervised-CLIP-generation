@@ -3,6 +3,7 @@ import torch.nn as nn
 from omegaconf import OmegaConf
 from typing import Optional
 
+from .vit_decoder import ViTDecoder
 from .builder import build_huggingface_model
 from .mlp import MLP
 from ..enums import Modality
@@ -22,7 +23,7 @@ class Decoder(nn.Module):
         
         if cfg.decoder.modality.lower() == Modality.Vision:
             self.model = ViTDecoder(cfg)
-            self.embed_size = cfg.decoder.embed_size
+            self.embed_size = cfg.decoder.embed_dim
         elif cfg.decoder.modality.lower() == Modality.Language:
             self.model = build_huggingface_model(cfg.decoder.model.lower())
             self.embed_size = self.model.transformer.wte.weight.shape[1]

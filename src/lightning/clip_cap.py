@@ -2,6 +2,9 @@ import json
 import pytorch_lightning as pl
 from omegaconf import OmegaConf
 from transformers import GPT2Tokenizer
+import torch
+
+from pytorch_lightning.loggers import WandbLogger
 
 from .. import builder
 from ..enums import Modality
@@ -28,21 +31,35 @@ class ClipCaptionLightningModel(pl.LightningModule):
         
         if not OmegaConf.is_none(self.cfg.train, "scheduler"):
             scheduler = builder.build_scheduler(self.cfg, optimizer)
-            return {"optimizer": optimizer, "lr_scheduler": scheduler}
+            return {'optimizer': optimizer, 
+                    'lr_scheduler': {'scheduler': scheduler, 'interval': 'step'}}
         else:
-            return {"optimizer": optimizer}
+            return optimizer
     
-    def training_step(self, batch, batch_idx):       
-        return self.shared_loss_step(batch, split='train')
+    def training_step(self, batch, batch_idx):
+        loss, outputs = self.shared_loss_step(batch, split='train')
+        return loss
     
     def validation_step(self, batch, batch_idx):
-        return self.shared_loss_step(batch, split='val')
+        loss, outputs = self.shared_loss_step(batch, split='val')
+        
+        if type(self.logger) == WandbLogger and self.output_modality == Modality.Vision:
+            labels = batch[1]
+            self.log_generated_images(outputs[:2], labels[:2])
+        
+        return loss
         
     def test_step(self, batch, batch_idx):
+        if self.output_modality ==  Modality.Vision:
+            self.input_modality = Modality.Language
+        else:
+            self.input_modality = Modality.Vision
+        
         return self.eval_step(batch, split='test')
 
     def get_prefix_and_labels(self, batch):
         prefix, labels, img_id, cap_id = batch
+        
         if self.input_modality == Modality.Vision:
             prefix = prefix[0]
         elif self.input_modality == Modality.Language:
@@ -63,17 +80,19 @@ class ClipCaptionLightningModel(pl.LightningModule):
             (labels, mask) = labels
             outputs = self.model(tokens=labels, prefix=prefix, mask=mask)
             outputs = outputs.logits[:, self.prefix_length - 1: -1]
+            loss = self.loss(outputs, labels)
         else: # Vision
             outputs = self.model(x=prefix)
+            loss = self.loss(outputs, labels, self.model)
         
-        loss = self.loss(outputs, labels)
         self.log(f"{split}_loss", loss.item(), on_step=True, on_epoch=True, prog_bar=True, logger=True)
         
-        return loss
+        return loss, outputs
     
     
     def eval_step(self, batch, split):
         # Note: batch size = 1
+        # import pdb; pdb.set_trace()
         _, _, img_id, cap_id = batch
         
         prefix, _ = self.get_prefix_and_labels(batch)
@@ -100,3 +119,19 @@ class ClipCaptionLightningModel(pl.LightningModule):
         # Log eval metrics
         for k, v in metrics_dict.items():
             self.log(f"{split}/{k}", v, on_epoch=True, logger=True, prog_bar=True)
+            
+    
+    def log_generated_images(self, pred, gt_images):
+        
+        pred = self.model.model.unpatchify(pred)
+        imgs = []
+        for i in range(len(pred)):
+            # concat each pred w/ corresponding ground truth
+            img = torch.concat((pred[i], gt_images[i]), dim=-1)
+            imgs.append(img)
+        
+        # self.logger.experiment.log({
+        #     "samples": [wandb.Image(img, caption=caption) 
+        #     for (img, caption) in my_images]
+        # })
+        self.logger.log_image(key="val samples", images=imgs)

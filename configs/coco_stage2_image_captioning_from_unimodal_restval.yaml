@@ -1,25 +1,18 @@
-experiment_name: 'clip_prefix_cap_refactored'
+experiment_name: 'coco_stage2_image_captioning_from_unimodal_train+restval'
 
 lightning:
   trainer:
     gpus: 1
-    #distributed_backend: 'ddp'
     max_epochs: 10
     lr: 2e-5
     precision: 16
     auto_lr_find: false
   checkpoint_callback:
     monitor: 'val_loss_epoch'
-    dirpath: '/pasteur/u/esui/data/coco/gpt2_finetune_ckpts'
+    dirpath: '/pasteur/u/esui/data/coco/ckpt'
     save_last: true
     mode: 'min'
     save_top_k: 3
-  early_stopping_callback:
-    monitor: 'val_loss_epoch'
-    min_delta: 0.00
-    patience: 10
-    verbose: False
-    mode: 'min'
   logger:
     logger_type: 'WandbLogger'
     save_dir: '/pasteur/u/esui/data/logger/'
@@ -56,11 +49,13 @@ model:
   normalize_prefix: False
   is_rn: False
   gpt2_type: 'gpt2'
-  checkpoint: '/pasteur/u/esui/data/ckpt/semi-supervised-CLIP-generation/pretrained_models/model_weights.pt'
+  pretrain_ckpt: '/pasteur/u/esui/data/coco/ckpt/coco_stage1_unimodal_text_reconstruction_train+restval_seed_1234/2023_02_10_00_19_08/last.ckpt'
+  
 
 data: 
   dataset: 'coco'
-  train_split: 'train+restval'
+  seed: 1234
+  train_split: 'train+restval' # train, restval, train+restval
   train_restval_data_path: '/pasteur/u/esui/data/coco/oscar_split_ViT-B_32_train+restval.pkl'
   train_data_path: '/pasteur/u/esui/data/coco/oscar_split_ViT-B_32_train.pkl'
   val_data_path: '/pasteur/u/esui/data/coco/oscar_split_ViT-B_32_val.pkl'
@@ -77,5 +72,5 @@ train:
     name: 'AdamW'
   scheduler:
     name: 'linear_schedule_with_warmup'
-    warmup_steps: 5000
+    warmup_steps: 5000 # note: this is default for full training set, for subsampled training set, this is modified in run.py to be num_train_batches // 2
 

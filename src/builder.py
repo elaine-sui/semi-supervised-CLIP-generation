@@ -28,7 +28,7 @@ def build_lightning_model(cfg):
     else:
         checkpoint_path = cfg.checkpoint
         print('='*80)
-        print(f'*** Using checkpoint: {checkpoint_path}')
+        print(f'*** Loading checkpoint: {checkpoint_path}')
         print('='*80)
         if checkpoint_path == 'skip': 
             return model(cfg)
@@ -54,7 +54,7 @@ def build_scheduler(cfg, optimizer):
         if scheduler_name == 'linear_schedule_with_warmup':
             scheduler = get_linear_schedule_with_warmup(
         optimizer, num_warmup_steps=cfg.train.scheduler.warmup_steps, 
-                num_training_steps=cfg.train.epochs * cfg.train.dataset_size)
+                num_training_steps=cfg.lightning.trainer.max_epochs * cfg.data.num_batches)
         # elif hasattr(torch.optim.lr_scheduler, scheduler_name):
         #     scheduler = getattr(torch.optim.lr_scheduler, scheduler_name)(**kwargs, **args)
         # else:

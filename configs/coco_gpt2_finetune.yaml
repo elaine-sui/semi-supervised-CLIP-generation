@@ -38,17 +38,22 @@ model:
 
 data: 
   dataset: 'coco'
-  train_data_path: '/pasteur/u/esui/data/coco/oscar_split_train.pkl'
-  val_data_path: '/pasteur/u/esui/data/coco/oscar_split_val.pkl'
-  test_data_path: '/pasteur/u/esui/data/coco/oscar_split_test.pkl'
+  train_split: 'train+restval'
+  train_restval_data_path: '/pasteur/u/esui/data/coco/oscar_split_ViT-B_32_train+restval.pkl'
+  train_data_path: '/pasteur/u/esui/data/coco/oscar_split_ViT-B_32_train.pkl'
+  val_data_path: '/pasteur/u/esui/data/coco/oscar_split_ViT-B_32_val.pkl'
+  restval_data_path: '/pasteur/u/esui/data/coco/oscar_split_ViT-B_32_restval.pkl'
+  test_data_path: '/pasteur/u/esui/data/coco/oscar_split_ViT-B_32_test.pkl'
   out_dir: '/pasteur/u/esui/data/coco/gpt2_finetune_ckpts'
     
 train: 
   batch_size: 40
   num_workers: 8
-  warmup_epochs: 10
   loss_fn: 
-    name: 'cross_entropy'
+    name: 'ce_caption_loss'
   optimizer: 
     name: 'AdamW'
+  scheduler:
+    name: 'linear_schedule_with_warmup'
+    warmup_steps: 5000
 

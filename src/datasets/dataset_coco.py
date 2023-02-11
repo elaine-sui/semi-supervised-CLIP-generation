@@ -12,6 +12,7 @@ from PIL import Image
 
 import pytorch_lightning as pl
 from transformers import GPT2Tokenizer
+from omegaconf import OmegaConf
 
 from ..enums import Modality
 
@@ -75,11 +76,28 @@ class ClipCocoDataset(pl.LightningDataModule):
     
         self.output_modality = self.cfg.decoder.modality
         
+        # In testing, input modality must be opposite of output modality to evaluate cross-modal task
+        if self.split == "test":
+            if self.output_modality == Modality.Vision:
+                self.input_modality = Modality.Language
+            else:
+                self.input_modality = Modality.Vision
+        else:
+            self.input_modality = self.cfg.encoder.modality
+        
         # Get all caption and image ids
         self.img_ids = sorted(list(self.images.keys()))
-        random.Random(self.cfg.data.seed).shuffle(self.img_ids)
+        random.shuffle(self.img_ids)
         self.cap_ids = sorted(list(self.captions.keys()))
-        random.Random(self.cfg.data.seed).shuffle(self.cap_ids)
+        random.shuffle(self.cap_ids)
+        
+        # Sample data
+        if "train" in self.split and not OmegaConf.is_none(cfg.data, 'sample_frac'):
+            img_sample_size = int(len(self.img_ids) * cfg.data.sample_frac)
+            cap_sample_size = int(len(self.cap_ids) * cfg.data.sample_frac)
+            self.img_ids = random.sample(self.img_ids, img_sample_size)
+            self.cap_ids = random.sample(self.cap_ids, cap_sample_size)
+        
         
         ## Preprocess image to clip
         device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -95,19 +113,29 @@ class ClipCocoDataset(pl.LightningDataModule):
             data_path = cfg.data.test_data_path
         elif split == 'restval':
             data_path = cfg.data.restval_data_path
+        elif split == 'train+restval':
+            data_path = cfg.data.train_restval_data_path
         else:
             raise NotImplementedError(f"split {split} invalid")
             
         return data_path
     
     def __len__(self) -> int:
-        if self.split == "test" and self.cfg.decoder.modality == Modality.Language:
+        if (self.split == "test" and self.output_modality == Modality.Language):
+            # Image captioning testing
+            return len(self.img_ids)
+        elif (self.input_modality == Modality.Vision and \
+              self.output_modality == Modality.Vision):
+            # Image reconstruction
             return len(self.img_ids)
         else:
             return len(self.cap_ids)
 
-    # Note: this is only for language generation (need an image version)
     def pad_tokens(self, item: int):
+        """
+        Note: this is only for language generation 
+        (the image padding is in the forward fn of ViT Decoder)
+        """
         tokens = self.captions_tokens[item]
         padding = self.max_seq_len - tokens.shape[0]
         if padding > 0:
@@ -123,11 +151,13 @@ class ClipCocoDataset(pl.LightningDataModule):
         return tokens, mask
     
     def __getitem__(self, item: int) -> Tuple[torch.Tensor, ...]:
-        if self.split == "test" and self.cfg.encoder.modality == Modality.Vision \
-                and self.cfg.decoder.modality == Modality.Language:
-            return self.get_item_for_test_img_cap(item)
+        # For testing, assume cross-modal
         
-        # TODO: Item is a sentence (caption) id -- need to change for image generation
+        if (self.split == "test" and self.output_modality == Modality.Language) or \
+            (self.input_modality == Modality.Vision and self.output_modality == Modality.Vision):
+            return self.get_item_per_image(item)
+        
+        # Default for language generation
         item = self.cap_ids[item]
         img_id = self.caption_id_2_image_id[item]
         
@@ -145,16 +175,15 @@ class ClipCocoDataset(pl.LightningDataModule):
         if self.output_modality == Modality.Vision:
             img_path = self.images[img_id]["img_path"]
             image = io.imread(img_path)
-            label = self.preprocess_img(Image.fromarray(image)).unsqueeze(0)
+            label = self.preprocess_img(Image.fromarray(image))
         else:
             tokens, mask = self.pad_tokens(item)
             label = (tokens, mask)
         
         return (img_prefix, text_prefix), label, img_id, item
     
-    def get_item_for_test_img_cap(self, item: int) -> Tuple[torch.Tensor, ...]:
-        # image captioning -- this is so that we don't iterate over all the captions have generate
-        # captions for the same image 5 times
+    def get_item_per_image(self, item: int) -> Tuple[torch.Tensor, ...]:
+        # this is for iterating over images (image captioning or image reconstruction)
         img_id = self.img_ids[item]
         img_prefix = self.images[img_id]["embed"]
 
@@ -163,10 +192,10 @@ class ClipCocoDataset(pl.LightningDataModule):
             img_prefix = img_prefix / img_prefix.norm(2, -1)
 
         dummy_prefix = torch.zeros_like(img_prefix)
-        dummy_tokens, dummy_mask = self.pad_tokens(self.cap_ids[0])
+        dummy_tokens = torch.zeros(self.max_seq_len)
+        dummy_mask = torch.cat((torch.ones(self.prefix_length), dummy_tokens), dim=0)
 
-        return (img_prefix, dummy_prefix), (dummy_tokens, dummy_mask), img_id, 0
-            
+        return (img_prefix, dummy_prefix), (dummy_tokens, dummy_mask), img_id, item
     
 ## To get stuff:
 # image_path = self.images[img_id]["img_path"]

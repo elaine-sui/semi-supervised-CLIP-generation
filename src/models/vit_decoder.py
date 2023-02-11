@@ -61,7 +61,7 @@ class ViTDecoder(nn.Module):
         imgs: (N, 3, H, W)
         x: (N, L, patch_size**2 *3)
         """
-        p = self.patch_embed.patch_size[0]
+        p = self.patch_size
         assert imgs.shape[2] == imgs.shape[3] and imgs.shape[2] % p == 0
 
         h = w = imgs.shape[2] // p
@@ -75,7 +75,7 @@ class ViTDecoder(nn.Module):
         x: (N, L, patch_size**2 *3)
         imgs: (N, 3, H, W)
         """
-        p = self.patch_embed.patch_size[0]
+        p = self.patch_size
         h = w = int(x.shape[1]**.5)
         assert h * w == x.shape[1]
         
@@ -91,8 +91,10 @@ class ViTDecoder(nn.Module):
         if x.shape[1] > self.num_patches: # truncate
             x = x[:, self.num_patches, :]
         elif x.shape[1] < self.num_patches: # append mask tokens
-            mask_tokens = self.mask_token.repeat(x.shape[0], self.num_patches - x.shape[1], 1)
-            x = torch.cat([x, mask_tokens], dim=1)  # no cls token
+            mask_tokens = self.mask_token.repeat(x.shape[0], self.num_patches + 1 - x.shape[1], 1)
+            x_ = torch.cat([x[:, 1:, :], mask_tokens], dim=1)  # no cls token
+            # x_ = torch.gather(x_, dim=1, index=ids_restore.unsqueeze(-1).repeat(1, 1, x.shape[2]))  # unshuffle
+            x = torch.cat([x[:, :1, :], x_], dim=1)  # append cls token
         
         # embed tokens
         x = self.decoder_embed(x)
@@ -108,7 +110,14 @@ class ViTDecoder(nn.Module):
         # predictor projection
         x = self.decoder_pred(x) # (batch_size, num_patches, patch_size^2 * num_channels)
         
-        # unpatchify
+        # remove cls token
+        x = x[:, 1:, :]
+        
+        return x
+    
+    def get_reconstruction(self, x):
+        
+        x = self(x)
         x = self.unpatchify(x)
         
         return x

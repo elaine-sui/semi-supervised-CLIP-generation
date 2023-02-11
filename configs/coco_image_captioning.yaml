@@ -1,4 +1,4 @@
-experiment_name: 'clip_prefix_cap_refactored'
+experiment_name: 'coco_img_cap_training_from_scratch'
 
 lightning:
   trainer:
@@ -10,16 +10,10 @@ lightning:
     auto_lr_find: false
   checkpoint_callback:
     monitor: 'val_loss_epoch'
-    dirpath: '/pasteur/u/esui/data/coco/gpt2_finetune_ckpts'
+    dirpath: '/pasteur/u/esui/data/coco/ckpt'
     save_last: true
     mode: 'min'
     save_top_k: 3
-  early_stopping_callback:
-    monitor: 'val_loss_epoch'
-    min_delta: 0.00
-    patience: 10
-    verbose: False
-    mode: 'min'
   logger:
     logger_type: 'WandbLogger'
     save_dir: '/pasteur/u/esui/data/logger/'
@@ -30,7 +24,6 @@ encoder:
     clip_model_type: 'ViT-B/32'
     modality: 'vision' # 'language', 'both'
     embed_dim: 512
-
 
 decoder:
     # Decode to language (ignored if modality is image)
@@ -56,10 +49,10 @@ model:
   normalize_prefix: False
   is_rn: False
   gpt2_type: 'gpt2'
-  checkpoint: '/pasteur/u/esui/data/ckpt/semi-supervised-CLIP-generation/pretrained_models/model_weights.pt'
 
 data: 
   dataset: 'coco'
+  seed: 1234
   train_split: 'train+restval'
   train_restval_data_path: '/pasteur/u/esui/data/coco/oscar_split_ViT-B_32_train+restval.pkl'
   train_data_path: '/pasteur/u/esui/data/coco/oscar_split_ViT-B_32_train.pkl'

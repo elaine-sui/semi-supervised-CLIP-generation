@@ -1,10 +1,10 @@
 import pytorch_lightning as pl
 import torchvision.transforms as transforms
 
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, ConcatDataset
 from .. import builder
-
 from .. import enums
+from ..parse_data import splits
 
 
 class DataModule(pl.LightningDataModule):
@@ -15,10 +15,13 @@ class DataModule(pl.LightningDataModule):
         self.dataset = builder.build_dataset(cfg)
 
     def train_dataloader(self):
-        if self.cfg.stage == "unimodal" and self.cfg.decoder.modality == enums.Modality.Language:
-            split = "restval"
-        else:
-            split = "train"
+        split = self.cfg.data.train_split
+        
+        # if split == "train+restval":
+        #     train_dataset = self.dataset(self.cfg, split="train")
+        #     restval_dataset = self.dataset(self.cfg, split="restval")
+        #     dataset = ConcatDataset([train_dataset, restval_dataset])
+        # else:
         dataset = self.dataset(self.cfg, split=split)
 
         return DataLoader(
@@ -42,17 +45,34 @@ class DataModule(pl.LightningDataModule):
         )
 
     def test_dataloader(self):
-        dataset = self.dataset(self.cfg, split=self.cfg.test_split)
+        if self.cfg.test_split == "all":
+            datasets = [self.dataset(self.cfg, split=split) for split in splits]
+            dataset = ConcatDataset(datasets)
+        elif self.cfg.test_split == "train+restval":
+            train_dataset = self.dataset(self.cfg, split="train")
+            restval_dataset = self.dataset(self.cfg, split="restval")
+            dataset = ConcatDataset([train_dataset, restval_dataset])
+        else:
+            dataset = self.dataset(self.cfg, split=self.cfg.test_split)
+            
+        if self.cfg.decoder.modality == enums.Modality.Language:
+            batch_size = 1
+        else:
+            batch_size = self.cfg.train.batch_size
+            
         return DataLoader(
             dataset,
             pin_memory=True,
             drop_last=False,
             shuffle=False,
-            batch_size=1,
-            num_workers=self.cfg.train.num_workers,
+            batch_size=batch_size,
+            num_workers=1,
         )
 
     def all_dataloader(self):
+        datasets = [self.dataset(self.cfg, split=split) for split in splits]
+        dataset = ConcatDataset(datasets)
+        
         dataset = self.dataset(self.cfg, split=self.cfg.test_split)
         return DataLoader(
             dataset,
