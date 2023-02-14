@@ -6,8 +6,9 @@ from typing import Optional
 from .vit_decoder import ViTDecoder
 from .builder import build_huggingface_model
 from .mlp import MLP
-from ..enums import Modality
-from ..utils import get_2d_sincos_pos_embed ## need to check this for vision!
+from .transformer_mapper import TransformerMapper
+from ..enums import Modality, MappingType
+from ..utils import get_2d_sincos_pos_embed
 from ..eval import generate2
 
 """
@@ -36,11 +37,28 @@ class Decoder(nn.Module):
         
         prefix_size = 640 if cfg.model.is_rn else 512
         
-        self.clip_project = MLP((prefix_size, (self.embed_size * self.prefix_length) // 2,
+        if cfg.model.mapping_type.lower() == MappingType.MLP:
+            self.clip_project = MLP((prefix_size, 
+                                     (self.embed_size * self.prefix_length) // 2, 
                                      self.embed_size * self.prefix_length))
+        elif cfg.model.mapping_type.lower() == MappingType.Transformer:
+            self.clip_project = TransformerMapper(prefix_size, self.embed_size, 
+                                                  self.prefix_length,
+                                                  cfg.model.prefix_length, 
+                                                  cfg.model.num_layers)
+            self.freeze_model_weights()
+        elif cfg.model.mapping_type.lower() == MappingType.Linear:
+            self.clip_project = nn.Linear(prefix_size, self.embed_size * self.prefix_length)
+        else:
+            raise NotImplementedError(f"mapping type {cfg.model.mapping_type.lower()} not implemented!")
     
         if not OmegaConf.is_none(cfg.model, "checkpoint"):
             self.load_from_checkpoint(cfg)
+            
+    def freeze_model_weights(self):
+        for param in self.model.parameters():
+            param.requires_grad = False
+    
     
     def load_from_checkpoint(self, cfg):
         print(f"=> Loading decoder checkpoint from {cfg.model.checkpoint}")

@@ -3,7 +3,6 @@ experiment_name: 'coco_stage1_unimodal_text_reconstruction_train+restval'
 lightning:
   trainer:
     gpus: 1
-    #distributed_backend: 'ddp'
     max_epochs: 10
     lr: 2e-5
     precision: 16

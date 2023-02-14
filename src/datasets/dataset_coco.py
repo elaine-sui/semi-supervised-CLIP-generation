@@ -15,6 +15,7 @@ from transformers import GPT2Tokenizer
 from omegaconf import OmegaConf
 
 from ..enums import Modality
+from ..parse_data import TEXT_TO_IMG_GAP_PATH, TEXT_EMBED_MEAN, IMAGE_EMBED_MEAN
 
 class ClipCocoDataset(pl.LightningDataModule):
 
@@ -27,6 +28,9 @@ class ClipCocoDataset(pl.LightningDataModule):
         self.split = split
         
         self.cfg = cfg
+        self.remove_modality_gap = self.cfg.data.remove_modality_gap
+        self.remove_mean = self.cfg.data.remove_mean
+        
         data_path = self.get_data_path(cfg, split)
         
         prefix_length = cfg.model.prefix_length
@@ -98,11 +102,23 @@ class ClipCocoDataset(pl.LightningDataModule):
             self.img_ids = random.sample(self.img_ids, img_sample_size)
             self.cap_ids = random.sample(self.cap_ids, cap_sample_size)
         
+        # Load modality gap
+        with open(TEXT_TO_IMG_GAP_PATH, 'rb') as f:
+            self.text_to_img_modality_gap = pickle.load(f)
+            
+        # Load means gap
+        with open(TEXT_EMBED_MEAN, 'rb') as f:
+            self.text_embed_mean = pickle.load(f)
+            
+        with open(IMAGE_EMBED_MEAN, 'rb') as f:
+            self.image_embed_mean = pickle.load(f)
         
         ## Preprocess image to clip
         device = 'cuda' if torch.cuda.is_available() else 'cpu'
-        _, self.preprocess_img = clip.load(self.cfg.encoder.clip_model_type, device=device, 
-                                           jit=False)
+        _, self.preprocess_img = clip.load(self.cfg.encoder.clip_model_type, 
+                                           device=device, jit=False)
+        
+        
         
     def get_data_path(self, cfg, split):
         if split == 'train':
@@ -170,6 +186,13 @@ class ClipCocoDataset(pl.LightningDataModule):
             
             text_prefix = text_prefix.float()
             text_prefix = text_prefix / text_prefix.norm(2, -1)
+        
+        if self.remove_modality_gap:
+            # note: the gap was computed as img - text
+            img_prefix -= self.text_to_img_modality_gap 
+        elif self.remove_mean:
+            img_prefix -= self.image_embed_mean
+            text_prefix -= self.text_embed_mean
             
         # Get output
         if self.output_modality == Modality.Vision:
@@ -190,6 +213,12 @@ class ClipCocoDataset(pl.LightningDataModule):
         if self.normalize_prefix:
             img_prefix = img_prefix.float()
             img_prefix = img_prefix / img_prefix.norm(2, -1)
+        
+        if self.remove_modality_gap:
+            # note: the gap was computed as img - text
+            img_prefix -= self.text_to_img_modality_gap 
+        elif self.remove_mean:
+            img_prefix -= self.image_embed_mean
 
         dummy_prefix = torch.zeros_like(img_prefix)
         dummy_tokens = torch.zeros(self.max_seq_len)

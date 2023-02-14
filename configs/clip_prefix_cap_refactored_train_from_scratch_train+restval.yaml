@@ -1,4 +1,4 @@
-experiment_name: 'clip_prefix_cap_refactored_train_from_scratch'
+experiment_name: 'clip_prefix_cap_refactored_train_from_scratch_train+restval'
 
 lightning:
   trainer:
@@ -16,12 +16,6 @@ lightning:
     mode: 'min'
     # every_n_epochs: 
     save_top_k: 3
-  # early_stopping_callback:
-  #   monitor: 'val_loss_epoch'
-  #   min_delta: 0.00
-  #   patience: 20
-  #   verbose: False
-  #   mode: 'min'
   logger:
     logger_type: 'WandbLogger'
     save_dir: '/pasteur/u/esui/data/logger/'
