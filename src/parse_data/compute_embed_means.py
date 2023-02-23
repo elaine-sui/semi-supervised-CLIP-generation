@@ -45,6 +45,6 @@ def main():
     print(f"Saved text_embed_mean to {TEXT_EMBED_MEAN}")
     print(f"Saved img_embed_mean to {IMAGE_EMBED_MEAN}")
     
-
+    
 if __name__ == '__main__':
     main()

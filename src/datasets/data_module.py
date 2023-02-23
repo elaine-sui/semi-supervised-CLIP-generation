@@ -16,12 +16,6 @@ class DataModule(pl.LightningDataModule):
 
     def train_dataloader(self):
         split = self.cfg.data.train_split
-        
-        # if split == "train+restval":
-        #     train_dataset = self.dataset(self.cfg, split="train")
-        #     restval_dataset = self.dataset(self.cfg, split="restval")
-        #     dataset = ConcatDataset([train_dataset, restval_dataset])
-        # else:
         dataset = self.dataset(self.cfg, split=split)
 
         return DataLoader(

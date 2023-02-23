@@ -19,4 +19,5 @@ dependencies:
    - wandb
    - numpy
    - pandas
+   - scikit-learn
 prefix: /pasteur/u/esui/miniconda3/envs/semi_supervised_clip

@@ -12,29 +12,39 @@ import os
 from tqdm import tqdm
 import argparse
 
-from . import DATA_ROOT, MASTER_JSON, splits
+from create_labels_json import DATA_ROOT, MASTER_JSON, splits
 
 # captions -- {caption_id: {caption_raw: .., image_id: ..}}
 # embeddings -- {image_id: embedding}
 
+splits2 = ['train', 'val', 'test']
 
-def main(clip_model_type: str):
+def main(clip_model_type: str, mini: bool):
     device = torch.device('cuda:0')
     clip_model_name = clip_model_type.replace('/', '_')
     
-    out_paths = [f"{DATA_ROOT}/data/coco/oscar_split_{clip_model_name}_{split}.pkl" for split in splits]
-    out_paths = dict(zip(splits, out_paths))
+    if mini:
+        out_paths = [f"{DATA_ROOT}/data/coco/oscar_split_{clip_model_name}_{split}_mini.pkl" for split in splits2]
+    else:
+        out_paths = [f"{DATA_ROOT}/data/coco/oscar_split_{clip_model_name}_{split}.pkl" for split in splits2]
+    out_paths = dict(zip(splits2, out_paths))
     
     clip_model, preprocess = clip.load(clip_model_type, device=device, jit=False)
     with open(MASTER_JSON, 'r') as f:
         data = json.load(f)["images"]
     print("%0d images loaded from json " % len(data))
     
-    all_images = dict(zip(splits, [{}, {}, {}, {}]))
-    all_captions = dict(zip(splits, [{}, {}, {}, {}]))
+    if mini:
+        data = data[:500]
+    
+    all_images = dict(zip(splits2, [{}, {}, {}]))
+    all_captions = dict(zip(splits2, [{}, {}, {}]))
     for i in tqdm(range(len(data))):
         d = data[i]
         split, filepath, filename = d["split"], d["filepath"], d["filename"]
+        
+        if split == "restval":
+            split = "train"
         
         # Get and save image and image embed
         img_id = d["imgid"]
@@ -63,14 +73,14 @@ def main(clip_model_type: str):
                 
             
         if (i + 1) % 10000 == 0:
-            for split in splits:
+            for split in splits2:
                 with open(out_paths[split], 'wb') as f:
                     pickle.dump({"images": all_images[split],
                                  "captions": all_captions[split]}, f)
             
             print_totals(all_images, all_captions)
 
-    for split in splits:
+    for split in splits2:
         with open(out_paths[split], 'wb') as f:
             pickle.dump({"images": all_images[split],
                          "captions": all_captions[split]}, f)
@@ -83,16 +93,18 @@ def main(clip_model_type: str):
 def print_totals(all_images, all_captions):
     print('Done')
     print("Total number of images (so far)")
-    embed_totals = [len(all_images[split].values()) for split in splits]
-    print(dict(zip(splits, embed_totals)))
+    embed_totals = [len(all_images[split].values()) for split in splits2]
+    print(dict(zip(splits2, embed_totals)))
     print("Total number of captions (so far)")
-    caption_totals = [len(all_captions[split].values()) for split in splits]
-    print(dict(zip(splits, caption_totals)))
+    caption_totals = [len(all_captions[split].values()) for split in splits2]
+    print(dict(zip(splits2, caption_totals)))
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--clip_model_type', default="ViT-B/32", 
-                        choices=('RN50', 'RN101', 'RN50x4', 'ViT-B/32'))
+                        choices=('RN50', 'RN101', 'RN50x4', 'ViT-B/32', 'ViT-L/14'))
+    parser.add_argument('--mini', action="store_true", 
+                        help="only save first 500")
     args = parser.parse_args()
-    exit(main(args.clip_model_type))
+    exit(main(args.clip_model_type, args.mini))

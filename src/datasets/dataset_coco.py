@@ -4,6 +4,7 @@ import pickle
 import sys
 import json
 import random
+import math
 from typing import Tuple, Optional, Union
 
 import skimage.io as io
@@ -30,6 +31,7 @@ class ClipCocoDataset(pl.LightningDataModule):
         self.cfg = cfg
         self.remove_modality_gap = self.cfg.data.remove_modality_gap
         self.remove_mean = self.cfg.data.remove_mean
+        self.add_gaussian_noise = self.cfg.data.add_gaussian_noise
         
         data_path = self.get_data_path(cfg, split)
         
@@ -119,6 +121,7 @@ class ClipCocoDataset(pl.LightningDataModule):
                                            device=device, jit=False)
         
         
+        self.std = math.sqrt(0.016) # hyperparam from capdec paper
         
     def get_data_path(self, cfg, split):
         if split == 'train':
@@ -193,6 +196,13 @@ class ClipCocoDataset(pl.LightningDataModule):
         elif self.remove_mean:
             img_prefix -= self.image_embed_mean
             text_prefix -= self.text_embed_mean
+        
+        if self.add_gaussian_noise:
+            img_prefix += torch.randn(img_prefix.shape) * self.std
+            text_prefix += torch.randn(text_prefix.shape) * self.std
+            
+            img_prefix = torch.nn.functional.normalize(img_prefix, dim=-1)
+            text_prefix = torch.nn.functional.normalize(text_prefix, dim=-1)
             
         # Get output
         if self.output_modality == Modality.Vision:
