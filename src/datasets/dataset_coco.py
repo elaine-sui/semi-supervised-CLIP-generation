@@ -193,9 +193,13 @@ class ClipCocoDataset(pl.LightningDataModule):
         if self.remove_modality_gap:
             # note: the gap was computed as img - text
             img_prefix -= self.text_to_img_modality_gap 
+            img_prefix = torch.nn.functional.normalize(img_prefix, dim=-1)
         elif self.remove_mean:
             img_prefix -= self.image_embed_mean
             text_prefix -= self.text_embed_mean
+            
+            img_prefix = torch.nn.functional.normalize(img_prefix, dim=-1)
+            text_prefix = torch.nn.functional.normalize(text_prefix, dim=-1)
         
         if self.add_gaussian_noise:
             img_prefix += torch.randn(img_prefix.shape) * self.std
@@ -227,8 +231,10 @@ class ClipCocoDataset(pl.LightningDataModule):
         if self.remove_modality_gap:
             # note: the gap was computed as img - text
             img_prefix -= self.text_to_img_modality_gap 
+            img_prefix = torch.nn.functional.normalize(img_prefix, dim=-1)
         elif self.remove_mean:
             img_prefix -= self.image_embed_mean
+            img_prefix = torch.nn.functional.normalize(img_prefix, dim=-1)
 
         dummy_prefix = torch.zeros_like(img_prefix)
         dummy_tokens = torch.zeros(self.max_seq_len)

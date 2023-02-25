@@ -69,7 +69,7 @@ def parse_configs():
         default=None,
         help="whether to add gaussian noise to input embeds",
     )
-    
+    parser.add_argument("--lr", type=float, default=None, help="learning rate")
     parser.add_argument("--test_split", type=str, default="test", help="test split")
     parser.add_argument("--random_seed", type=int, default=1234, help="random seed")
 
@@ -90,7 +90,7 @@ def parse_configs():
         cfg.lightning.trainer.gpus = str(args.gpus)
 
     cfg.checkpoint = args.checkpoint
-    if "train+restval" in cfg.checkpoint:
+    if cfg.checkpoint and "train+restval" in cfg.checkpoint:
         cfg.experiment_name += "_stage1_train+restval"
 
     cfg.model.normalize_prefix = False
@@ -116,9 +116,11 @@ def parse_configs():
     if args.add_gaussian_noise:
         cfg.experiment_name += f"_add_gaussian_noise"
 
+    if args.lr:
+        cfg.lightning.trainer.lr = lr
+        cfg.experiment_name += f"_lr_{lr}"
+        
     cfg.test_split = args.test_split
-
-    cfg.experiment_name += f"_seed_{args.random_seed}"
 
     # get current time
     now = datetime.datetime.now(tz.tzlocal())
@@ -136,6 +138,11 @@ def parse_configs():
 
     if cfg.checkpoint is None and not OmegaConf.is_none(cfg.model, "pretrain_ckpt"):
         cfg.checkpoint = cfg.model.pretrain_ckpt
+    if cfg.checkpoint and "noise" in cfg.checkpoint:
+        cfg.experiment_name += f"_add_noise_in_pretrain"
+        
+    cfg.experiment_name += f"_seed_{args.random_seed}"
+        
 
     return cfg, args
 
