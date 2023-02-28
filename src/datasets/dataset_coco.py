@@ -180,14 +180,11 @@ class ClipCocoDataset(pl.LightningDataModule):
         item = self.cap_ids[item]
         img_id = self.caption_id_2_image_id[item]
         
-        img_prefix = self.images[img_id]["embed"]
-        text_prefix = self.captions[item]["embed"]
+        img_prefix = self.images[img_id]["embed"].float()
+        text_prefix = self.captions[item]["embed"].float()
         
         if self.normalize_prefix:
-            img_prefix = img_prefix.float()
             img_prefix = img_prefix / img_prefix.norm(2, -1)
-            
-            text_prefix = text_prefix.float()
             text_prefix = text_prefix / text_prefix.norm(2, -1)
         
         if self.remove_modality_gap:
@@ -222,10 +219,9 @@ class ClipCocoDataset(pl.LightningDataModule):
     def get_item_per_image(self, item: int) -> Tuple[torch.Tensor, ...]:
         # this is for iterating over images (image captioning or image reconstruction)
         img_id = self.img_ids[item]
-        img_prefix = self.images[img_id]["embed"]
+        img_prefix = self.images[img_id]["embed"].float()
 
         if self.normalize_prefix:
-            img_prefix = img_prefix.float()
             img_prefix = img_prefix / img_prefix.norm(2, -1)
         
         if self.remove_modality_gap:
