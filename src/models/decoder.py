@@ -46,7 +46,8 @@ class Decoder(nn.Module):
                                                   self.prefix_length,
                                                   cfg.model.prefix_length, 
                                                   cfg.model.num_layers)
-            self.freeze_model_weights()
+            # self.freeze_model_weights()
+            self.model.eval()
         elif cfg.model.mapping_type.lower() == MappingType.Linear:
             self.clip_project = nn.Linear(prefix_size, self.embed_size * self.prefix_length)
         else:
@@ -55,9 +56,9 @@ class Decoder(nn.Module):
         if not OmegaConf.is_none(cfg.model, "checkpoint"):
             self.load_from_checkpoint(cfg)
             
-    def freeze_model_weights(self):
-        for param in self.model.parameters():
-            param.requires_grad = False
+    # def freeze_model_weights(self):
+    #     for param in self.model.parameters():
+    #         param.requires_grad = False
     
     
     def load_from_checkpoint(self, cfg):

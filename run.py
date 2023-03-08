@@ -117,8 +117,8 @@ def parse_configs():
         cfg.experiment_name += f"_add_gaussian_noise"
 
     if args.lr:
-        cfg.lightning.trainer.lr = lr
-        cfg.experiment_name += f"_lr_{lr}"
+        cfg.lightning.trainer.lr = args.lr
+        cfg.experiment_name += f"_lr_{args.lr}"
         
     cfg.test_split = args.test_split
 
