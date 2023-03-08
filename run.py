@@ -21,7 +21,7 @@ from pytorch_lightning.callbacks import (
     LearningRateMonitor,
 )
 
-DATA_PREFIX = "/pasteur/u/esui"
+DATA_PREFIX = "."
 
 
 def parse_configs():
