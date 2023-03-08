@@ -1,9 +1,9 @@
 import pickle
 
 if __name__ == '__main__':
-    train_data_path = '/pasteur/u/esui/data/coco/oscar_split_ViT-B_32_train.pkl'
-    restval_data_path = '/pasteur/u/esui/data/coco/oscar_split_ViT-B_32_restval.pkl'
-    train_restval_data_path = '/pasteur/u/esui/data/coco/oscar_split_ViT-B_32_train+restval.pkl'
+    train_data_path = './data/coco/oscar_split_ViT-B_32_train.pkl'
+    restval_data_path = './data/coco/oscar_split_ViT-B_32_restval.pkl'
+    train_restval_data_path = './data/coco/oscar_split_ViT-B_32_train+restval.pkl'
     
     print("Loading train data")
     with open(train_data_path, 'rb') as f:

@@ -1,1 +1,0 @@
-python3 run.py --config configs/coco_stage2_image_captioning.yaml --train --test

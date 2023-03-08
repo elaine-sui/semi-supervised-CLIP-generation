@@ -1,1 +1,0 @@
-python3 run.py --config configs/coco_stage2_image_captioning_from_unimodal_restval.yaml --train --test

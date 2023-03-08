@@ -1,1 +1,0 @@
-python3 run.py --config configs/coco_stage2_unimodal_text_reconstruction.yaml --train --test

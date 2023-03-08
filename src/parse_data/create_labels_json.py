@@ -1,7 +1,7 @@
 import json
 from tqdm import tqdm
 
-DATA_ROOT = '/pasteur/u/esui'
+DATA_ROOT = '.'
 MASTER_JSON=f'{DATA_ROOT}/data/coco/annotations/dataset_coco.json'
 splits = ["train", "val", "test", "restval"]
 

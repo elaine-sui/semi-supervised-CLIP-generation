@@ -4,11 +4,11 @@ import os
 
 from tqdm import tqdm
 
-TEXT_EMBED_MEAN = '/pasteur/u/esui/data/coco/normalized_text_embed_mean.pkl'
-IMAGE_EMBED_MEAN = '/pasteur/u/esui/data/coco/normalized_image_embed_mean.pkl'
+TEXT_EMBED_MEAN = './data/coco/normalized_text_embed_mean.pkl'
+IMAGE_EMBED_MEAN = './data/coco/normalized_image_embed_mean.pkl'
 
 def main():
-    data_path =  '/pasteur/u/esui/data/coco/oscar_split_ViT-B_32_train+restval.pkl'
+    data_path =  './data/coco/oscar_split_ViT-B_32_train+restval.pkl'
     
     print(f"Loading data from {data_path}")
     with open(data_path, 'rb') as f:
