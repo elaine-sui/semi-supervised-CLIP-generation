@@ -6,6 +6,8 @@ import random
 import math
 import clip
 
+from typing import Tuple
+
 import pytorch_lightning as pl
 from transformers import GPT2Tokenizer
 from omegaconf import OmegaConf
@@ -52,8 +54,7 @@ class GenericDataset(pl.LightningDataModule):
         print("=> Loading all_data pkl")
         with open(data_path, 'rb') as f:
             all_data = pickle.load(f)
-        print("Number of images is %0d" % len(all_data["images"]))
-        print("Number of captions is %0d" % len(all_data["captions"]))
+        print("Number of items is %0d" % len(all_data))
         sys.stdout.flush()
         
         # [{x_embed: ..., y_embed: ..., y: ...}]
