@@ -4,7 +4,11 @@ import argparse
 
 from tqdm import tqdm
 
-from ..enums import DatasetType
+import os
+import sys
+sys.path.append(os.getcwd())
+from src.enums import DatasetType
+# from ..enums import DatasetType
 
 TEXT_VIDEOCLIP_EMBED_MEAN = '/pasteur/u/esui/data/c3/normalized_text_videoclip_embed_mean.pkl'
 VIDEO_EMBED_MEAN = '/pasteur/u/esui/data/c3/normalized_text_video_embed_mean.pkl'
@@ -39,12 +43,15 @@ def main(dataset_type):
     with open(data_path, 'rb') as f:
         all_data = pickle.load(f)
 
-    text_mean = torch.zeros((1, 512)) # embed dim
-    x_mean = torch.zeros((1, 512)) # embed dim
+    embed_dim = all_data[0]['x_embed'].shape[0]
+    text_mean = torch.zeros((1, embed_dim)) # embed dim
+    x_mean = torch.zeros((1, embed_dim)) # embed dim
         
     for item in tqdm(all_data):
-        text_mean += item['y_embed']
-        x_mean += item['x_embed']
+        text_embed = torch.from_numpy(item['y_embed'])
+        x_embed = torch.from_numpy(item['x_embed'])
+        text_mean += text_embed / text_embed.norm()
+        x_mean += x_embed / x_embed.norm()
     
     text_mean /= len(all_data)
     x_mean /= len(all_data)
@@ -61,7 +68,7 @@ def main(dataset_type):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--dataset_type', type=str, choices=['video', 'medical', 'amino_acid'])
+    parser.add_argument('--dataset_type', type=str, default='video', choices=['video', 'medical', 'amino_acid'])
     args = parser.parse_args()
 
     print(f"Dataset type: {args.dataset_type}")

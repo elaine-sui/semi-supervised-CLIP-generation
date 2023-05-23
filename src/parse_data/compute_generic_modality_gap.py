@@ -4,7 +4,11 @@ import argparse
 
 from tqdm import tqdm
 
-from ..enums import DatasetType
+import os
+import sys
+sys.path.append(os.getcwd())
+from src.enums import DatasetType
+# from ..enums import DatasetType
 
 TEXT_TO_VID_GAP_PATH = '/pasteur/u/esui/data/c3/normalized_cap_to_vid_gap.pkl'
 TEXT_TO_MED_GAP_PATH = '/pasteur/u/esui/data/c3/normalized_cap_to_med_img_gap.pkl'
@@ -33,11 +37,12 @@ def main(dataset_type):
     with open(data_path, 'rb') as f:
         all_data = pickle.load(f)
 
-    embed_gap_sum = torch.zeros((1, 512)) # embed dim
+    embed_dim = all_data[0]['x_embed'].shape[0]
+    embed_gap_sum = torch.zeros((1, embed_dim)) # embed dim
         
     for item in tqdm(all_data):
-        cap_embed = item['y_embed']
-        x_embed = item['x_embed']
+        cap_embed = torch.from_numpy(item['y_embed'])
+        x_embed = torch.from_numpy(item['x_embed'])
         embed_gap = (x_embed / x_embed.norm()) - (cap_embed / cap_embed.norm())
         
         embed_gap_sum += embed_gap
@@ -52,7 +57,7 @@ def main(dataset_type):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--dataset_type', type=str, choices=['video', 'medical', 'amino_acid'])
+    parser.add_argument('--dataset_type', type=str, default='video', choices=['video', 'medical', 'amino_acid'])
     args = parser.parse_args()
 
     print(f"Dataset type: {args.dataset_type}")
