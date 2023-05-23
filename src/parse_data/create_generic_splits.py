@@ -2,8 +2,10 @@ import pickle
 import argparse
 import os
 import random
+import sys
 
-from ..enums import DatasetType
+sys.path.append(os.getcwd())
+from src.enums import DatasetType
 
 def get_data_paths(dataset_type):
     output_folder = '/pasteur/u/esui/data/c3'
@@ -13,7 +15,7 @@ def get_data_paths(dataset_type):
     elif dataset_type == DatasetType.Medical:
         data_path =  '/pasteur/u/yuhuiz/archive/neurips_modality_gap/pull_figure/data_convirt.pkl'
     elif dataset_type == DatasetType.Amino_Acid:
-        data_path =  '/pasteur/u/yuhuiz/archive/neurips_modality_gap/pull_figure/data_clasp.pkl  '
+        data_path =  '/pasteur/u/yuhuiz/archive/neurips_modality_gap/pull_figure/data_clasp.pkl'
     else:
         raise NotImplementedError(f"dataset type {dataset_type} not implemented")
 
@@ -42,7 +44,7 @@ def main(args):
     val_data = all_data[num_train:-num_test]
 
     # Save to pickle
-    file_name = os.path.split(data_path)[0]
+    file_name = os.path.split(data_path)[1]
 
     for split, data in zip(['train', 'val', 'test'], [train_data, val_data, test_data]):
         new_file_path = os.path.join(output_folder, file_name[:-4] + f"_{split}" + ".pkl")
@@ -55,9 +57,9 @@ def main(args):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--dataset_type', type=str, choices=['video', 'medical', 'amino_acid'])
-    parser.add_argument('--train_ratio', type=0.8)
-    parser.add_argument('--test_ratio', type=0.1)
+    parser.add_argument('--dataset_type', type=str, default='video', choices=['video', 'medical', 'amino_acid'])
+    parser.add_argument('--train_ratio', type=float, default=0.8)
+    parser.add_argument('--test_ratio', type=float, default=0.1)
     parser.add_argument('--seed', type=int, default=1234)
     args = parser.parse_args()
 
