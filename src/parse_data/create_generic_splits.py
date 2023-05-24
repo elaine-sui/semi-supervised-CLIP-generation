@@ -34,14 +34,19 @@ def main(args):
     # Shuffle -- seeded
     random.Random(args.seed).shuffle(all_data)
 
+    ids = list(range(len(all_data)))
+
     # Split
     num_train = int(len(all_data) * args.train_ratio)
     train_data = all_data[:num_train]
+    train_data = dict(zip(ids[:num_train], train_data))
 
     num_test = int(len(all_data) * args.test_ratio)
     test_data = all_data[-num_test:]
+    test_data = dict(zip(ids[-num_test:], test_data))
 
     val_data = all_data[num_train:-num_test]
+    val_data = dict(zip(ids[num_train:-num_test], val_data))
 
     # Save to pickle
     file_name = os.path.split(data_path)[1]

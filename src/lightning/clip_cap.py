@@ -1,4 +1,3 @@
-import json
 import pytorch_lightning as pl
 from omegaconf import OmegaConf
 from transformers import GPT2Tokenizer
@@ -10,7 +9,7 @@ from .. import builder
 from ..enums import Modality
 from ..eval import generate2, evaluate_on_coco_caption
 from ..utils import add_predictions_to_results_json, get_pred_filename, get_metrics_out_filename
-from ..parse_data import LABELS_JSONS_LST
+from ..parse_data import LABELS_JSONS_LST, get_label_json_list
 from ..models import Decoder
 
 class ClipCaptionLightningModel(pl.LightningModule):
@@ -111,8 +110,13 @@ class ClipCaptionLightningModel(pl.LightningModule):
         
         # Compute eval metrics
         pred_file = get_pred_filename(self.cfg.output_dir, split)
+        print(f"=> Predictions at {pred_file}")
+
         out_file = get_metrics_out_filename(self.cfg.output_dir, split)
-        metrics_dict = evaluate_on_coco_caption(pred_file, LABELS_JSONS_LST[split], out_file)
+        if self.cfg.data.dataset == 'coco':
+            metrics_dict = evaluate_on_coco_caption(pred_file, LABELS_JSONS_LST[split], out_file)
+        else:
+            metrics_dict = evaluate_on_coco_caption(pred_file, get_label_json_list(self.cfg.data.dataset)[split], out_file)
         
         print(f"=> Metrics at {out_file}")
         

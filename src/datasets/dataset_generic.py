@@ -4,7 +4,6 @@ import pickle
 import sys
 import random
 import math
-import clip
 
 from typing import Tuple
 
@@ -36,7 +35,7 @@ class GenericDataset(pl.LightningDataModule):
         self.split = split
         
         self.cfg = cfg
-        self.dataset_type = self.cfg.data.type
+        self.dataset_type = self.cfg.data.dataset
         self.remove_modality_gap = self.cfg.data.remove_modality_gap
         self.remove_mean = self.cfg.data.remove_mean
         self.add_gaussian_noise = self.cfg.data.add_gaussian_noise
@@ -94,7 +93,7 @@ class GenericDataset(pl.LightningDataModule):
             self.input_modality = self.cfg.encoder.modality
         
         # Get all caption and image ids (they are the same)
-        self.ids = list(range(len(self.data)))
+        self.ids = list(self.data.keys())
         random.shuffle(self.ids)
         
         # Sample data
@@ -114,12 +113,6 @@ class GenericDataset(pl.LightningDataModule):
             
         with open(x_embed_mean_path, 'rb') as f:
             self.x_embed_mean = pickle.load(f)
-        
-        ## Preprocess image to clip
-        device = 'cuda' if torch.cuda.is_available() else 'cpu'
-        _, self.preprocess_img = clip.load(self.cfg.encoder.clip_model_type, 
-                                           device=device, jit=False)
-        
         
         self.std = math.sqrt(0.016) # hyperparam from capdec paper
         
@@ -185,8 +178,8 @@ class GenericDataset(pl.LightningDataModule):
         # Default for language generation
         id_ = self.ids[item]
         
-        x_prefix = self.data[id_]["x_embed"].float()
-        text_prefix = self.data[id_]["y_embed"].float()
+        x_prefix = torch.from_numpy(self.data[id_]["x_embed"]).float()
+        text_prefix = torch.from_numpy(self.data[id_]["y_embed"]).float()
         
         if self.normalize_prefix:
             x_prefix = x_prefix / x_prefix.norm(2, -1)
@@ -194,10 +187,10 @@ class GenericDataset(pl.LightningDataModule):
         
         if self.remove_modality_gap:
             # note: the gap was computed as vid - text
-            x_prefix -= self.text_to_x_modality_gap 
+            x_prefix -= self.text_to_x_modality_gap.squeeze()
         elif self.remove_mean:
-            x_prefix -= self.x_embed_mean
-            text_prefix -= self.text_embed_mean
+            x_prefix -= self.x_embed_mean.squeeze()
+            text_prefix -= self.text_embed_mean.squeeze()
         
         if self.add_gaussian_noise:
             x_prefix += torch.randn(x_prefix.shape) * self.std
@@ -216,7 +209,7 @@ class GenericDataset(pl.LightningDataModule):
     def get_item_per_image(self, item: int) -> Tuple[torch.Tensor, ...]:
         # this is for iterating over images (image captioning or image reconstruction)
         id_ = self.ids[item]
-        x_prefix = self.data[id_]["x_embed"].float()
+        x_prefix = torch.from_numpy(self.data[id_]["x_embed"]).float()
 
         if self.normalize_prefix:
             x_prefix = x_prefix / x_prefix.norm(2, -1)

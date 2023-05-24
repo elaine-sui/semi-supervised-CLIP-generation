@@ -35,7 +35,7 @@ class Decoder(nn.Module):
         
         self.prefix_length = cfg.model.prefix_length
         
-        prefix_size = 640 if cfg.model.is_rn else 512
+        prefix_size = cfg.encoder.embed_dim
         
         if cfg.model.mapping_type.lower() == MappingType.MLP:
             self.clip_project = MLP((prefix_size, 

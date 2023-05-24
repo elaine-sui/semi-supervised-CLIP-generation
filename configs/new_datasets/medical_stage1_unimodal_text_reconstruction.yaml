@@ -1,0 +1,60 @@
+experiment_name: 'medical_img_stage1_unimodal_text_reconstruction_train'
+
+lightning:
+  trainer:
+    gpus: 1
+    max_epochs: 10
+    lr: 2e-5
+    precision: 16
+    auto_lr_find: false
+  checkpoint_callback:
+    monitor: 'val_loss_epoch'
+    dirpath: '/pasteur/u/esui/data/c3/convirt_ckpt'
+    save_last: true
+    mode: 'min'
+    save_top_k: 3
+  logger:
+    logger_type: 'WandbLogger'
+    save_dir: '/pasteur/u/esui/data/logger/'
+    name: 'clip_prefix_cap_extra_datasets'
+    project: 'clip_prefix_cap_coco'
+
+encoder:
+    modality: 'language' # 'language', 'both'
+    embed_dim: 512
+
+decoder:
+    # Decode to language
+    modality: 'language'
+    model: 'gpt2'
+
+
+model: 
+  num_layers: 8
+  mapping_type: 'mlp'
+  prefix_length: 10
+  clip_size: 10
+  normalize_prefix: False
+  is_rn: False
+  gpt2_type: 'gpt2'
+
+data: 
+  dataset: 'medical'
+  seed: 1234
+  train_split: 'train'
+  train_data_path: '/pasteur/u/esui/data/c3/data_convirt_train.pkl'
+  val_data_path: '/pasteur/u/esui/data/c3/data_convirt_val.pkl'
+  test_data_path: '/pasteur/u/esui/data/c3/data_convirt_test.pkl'
+  out_dir: '/pasteur/u/esui/data/c3/clip_prefix_convirt_ckpts'
+    
+train: 
+  batch_size: 40
+  num_workers: 8
+  loss_fn: 
+    name: 'ce_caption_loss'
+  optimizer: 
+    name: 'AdamW'
+  scheduler:
+    name: 'linear_schedule_with_warmup'
+    warmup_steps: 40
+

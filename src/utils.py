@@ -54,7 +54,7 @@ def add_predictions_to_results_json(predictions, output_dir, split):
     all_preds.extend(predictions)
 
     with open(filepath, 'w') as f:
-        json.dump(predictions, f)
+        json.dump(predictions, f, indent=4)
         
     print(f"=> Predictions at {filepath}")
 

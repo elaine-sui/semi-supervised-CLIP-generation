@@ -18,5 +18,7 @@ from .compute_generic_embed_means import (
     AMINO_ACID_EMBED_MEAN
 )
 
+from .create_generic_labels_json import get_label_json_list
+
         
     

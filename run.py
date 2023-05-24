@@ -301,7 +301,7 @@ if __name__ == "__main__":
                 cfg.model.pop("checkpoint")
 
             # Change train_split (unused anyway)
-            cfg.data.train_split = "restval"
+            cfg.data.train_split = "val"
 
             cfg.output_dir = "/".join(cfg.checkpoint.split("/")[:-1]).replace(
                 "ckpt", "output"
