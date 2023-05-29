@@ -11,9 +11,13 @@ def get_data_paths(dataset_type):
     output_folder = '/pasteur/u/esui/data/c3'
 
     if dataset_type == DatasetType.Video:
-        data_path =  '/pasteur/u/yuhuiz/archive/neurips_modality_gap/pull_figure/data_videoclip.pkl'
+        # data_path =  '/pasteur/u/yuhuiz/archive/neurips_modality_gap/pull_figure/data_videoclip.pkl'
+        data_path = '/pasteur/u/yuhuiz/archive/neurips_modality_gap/pull_figure/data_videoclip_3k.pkl'
     elif dataset_type == DatasetType.Medical:
-        data_path =  '/pasteur/u/yuhuiz/archive/neurips_modality_gap/pull_figure/data_convirt.pkl'
+        # data_path =  '/pasteur/u/yuhuiz/archive/neurips_modality_gap/pull_figure/data_convirt.pkl'
+        # data_path = '/pasteur/u/yuhuiz/archive/neurips_modality_gap/pull_figure/data_convirt_10k.pkl'
+        # data_path = '/pasteur/u/esui/data/c3/data_medclip_10k.pkl'
+        data_path = '/pasteur/u/esui/data/c3/data_medclip_no_aug_10k.pkl'
     elif dataset_type == DatasetType.Amino_Acid:
         data_path =  '/pasteur/u/yuhuiz/archive/neurips_modality_gap/pull_figure/data_clasp.pkl'
     else:

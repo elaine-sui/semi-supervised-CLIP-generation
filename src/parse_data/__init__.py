@@ -13,9 +13,13 @@ from .compute_generic_embed_means import (
     TEXT_VIDEOCLIP_EMBED_MEAN, 
     VIDEO_EMBED_MEAN, 
     TEXT_CONVIRT_EMBED_MEAN,
+    TEXT_MEDCLIP_EMBED_MEAN,
     MED_IMAGES_EMBED_MEAN,
+    MED_IMAGES_MEDCLIP_EMBED_MEAN,
     TEXT_CLASP_EMBED_MEAN,
-    AMINO_ACID_EMBED_MEAN
+    AMINO_ACID_EMBED_MEAN,
+    TEXT_MEDCLIP_NO_AUG_EMBED_MEAN,
+    MED_IMAGES_MEDCLIP_NO_AUG_EMBED_MEAN,
 )
 
 from .create_generic_labels_json import get_label_json_list

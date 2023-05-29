@@ -8,11 +8,11 @@
 #SBATCH --account=pasteur
 #SBATCH --gres=gpu:1
 
-#SBATCH --job-name="c3"
+#SBATCH --job-name="c2_noise_001"
 #SBATCH --output=logs/log-%j.out # STDOUT
 
 # only use the following if you want email notification
 #SBATCH --mail-user=esui@stanford.edu
 #SBATCH --mail-type=ALL
 
-bash $HOME/semi-supervised-CLIP-generation/scripts/video_scripts/train_stage1_unimodal_c3.sh
+bash $HOME/semi-supervised-CLIP-generation/scripts/video_scripts/train_stage1_unimodal_c2_noise_001.sh

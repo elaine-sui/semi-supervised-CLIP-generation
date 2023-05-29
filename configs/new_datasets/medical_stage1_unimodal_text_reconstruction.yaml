@@ -3,16 +3,16 @@ experiment_name: 'medical_img_stage1_unimodal_text_reconstruction_train'
 lightning:
   trainer:
     gpus: 1
-    max_epochs: 10
+    max_epochs: 20
     lr: 2e-5
     precision: 16
     auto_lr_find: false
   checkpoint_callback:
     monitor: 'val_loss_epoch'
-    dirpath: '/pasteur/u/esui/data/c3/convirt_ckpt'
+    dirpath: '/pasteur/u/esui/data/c3/medclip_ckpt'
     save_last: true
     mode: 'min'
-    save_top_k: 3
+    save_top_k: 2
   logger:
     logger_type: 'WandbLogger'
     save_dir: '/pasteur/u/esui/data/logger/'
@@ -42,10 +42,18 @@ data:
   dataset: 'medical'
   seed: 1234
   train_split: 'train'
-  train_data_path: '/pasteur/u/esui/data/c3/data_convirt_train.pkl'
-  val_data_path: '/pasteur/u/esui/data/c3/data_convirt_val.pkl'
-  test_data_path: '/pasteur/u/esui/data/c3/data_convirt_test.pkl'
-  out_dir: '/pasteur/u/esui/data/c3/clip_prefix_convirt_ckpts'
+  # train_data_path: '/pasteur/u/esui/data/c3/data_medclip_10k_train.pkl'
+  # val_data_path: '/pasteur/u/esui/data/c3/data_medclip_10k_val.pkl'
+  # test_data_path: '/pasteur/u/esui/data/c3/data_medclip_10k_test.pkl'
+  # out_dir: '/pasteur/u/esui/data/c3/clip_prefix_medclip_ckpts'
+  train_data_path: '/pasteur/u/esui/data/c3/data_medclip_no_aug_10k_train.pkl'
+  val_data_path: '/pasteur/u/esui/data/c3/data_medclip_no_aug_10k_val.pkl'
+  test_data_path: '/pasteur/u/esui/data/c3/data_medclip_no_aug_10k_test.pkl'
+  out_dir: '/pasteur/u/esui/data/c3/clip_prefix_medclip_no_aug_ckpts'
+  # train_data_path: '/pasteur/u/esui/data/c3/data_convirt_10k_train.pkl'
+  # val_data_path: '/pasteur/u/esui/data/c3/data_convirt_10k_val.pkl'
+  # test_data_path: '/pasteur/u/esui/data/c3/data_convirt_10k_test.pkl'
+  # out_dir: '/pasteur/u/esui/data/c3/clip_prefix_convirt_ckpts'
     
 train: 
   batch_size: 40
@@ -56,5 +64,5 @@ train:
     name: 'AdamW'
   scheduler:
     name: 'linear_schedule_with_warmup'
-    warmup_steps: 40
+    warmup_steps: 680
 

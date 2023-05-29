@@ -19,7 +19,8 @@ def get_data_paths(dataset_type):
         data_path =  '/pasteur/u/esui/data/c3/data_videoclip_train.pkl'
         gap_path = TEXT_TO_VID_GAP_PATH
     elif dataset_type == DatasetType.Medical:
-        data_path =  '/pasteur/u/esui/data/c3/data_convirt_train.pkl'
+        # data_path =  '/pasteur/u/esui/data/c3/data_convirt_train.pkl'
+        data_path =  '/pasteur/u/esui/data/c3/data_medclip_no_aug_10k_train.pkl'
         gap_path = TEXT_TO_MED_GAP_PATH
     elif dataset_type == DatasetType.Amino_Acid:
         data_path =  '/pasteur/u/esui/data/c3/data_clasp_train.pkl'
@@ -40,7 +41,7 @@ def main(dataset_type):
     embed_dim = all_data[0]['x_embed'].shape[0]
     embed_gap_sum = torch.zeros((1, embed_dim)) # embed dim
         
-    for item in tqdm(all_data):
+    for id, item in tqdm(all_data.items()):
         cap_embed = torch.from_numpy(item['y_embed'])
         x_embed = torch.from_numpy(item['x_embed'])
         embed_gap = (x_embed / x_embed.norm()) - (cap_embed / cap_embed.norm())

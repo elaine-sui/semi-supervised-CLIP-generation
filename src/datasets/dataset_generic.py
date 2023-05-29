@@ -18,10 +18,14 @@ from ..parse_data import (
     VIDEO_EMBED_MEAN,
     TEXT_TO_MED_GAP_PATH,
     TEXT_CONVIRT_EMBED_MEAN,
+    TEXT_MEDCLIP_EMBED_MEAN,
     MED_IMAGES_EMBED_MEAN,
+    MED_IMAGES_MEDCLIP_EMBED_MEAN,
     TEXT_TO_AMINO_ACID_GAP_PATH,
     TEXT_CLASP_EMBED_MEAN,
-    AMINO_ACID_EMBED_MEAN
+    AMINO_ACID_EMBED_MEAN,
+    TEXT_MEDCLIP_NO_AUG_EMBED_MEAN,
+    MED_IMAGES_MEDCLIP_NO_AUG_EMBED_MEAN,
 )
 
 class GenericDataset(pl.LightningDataModule):
@@ -56,8 +60,9 @@ class GenericDataset(pl.LightningDataModule):
         print("Number of items is %0d" % len(all_data))
         sys.stdout.flush()
         
-        # [{x_embed: ..., y_embed: ..., y: ...}]
+        # {id: {x_embed: ..., y_embed: ..., y: ...}}
         self.data = all_data
+        self.ids = list(self.data.keys())
         
         ###################
         
@@ -71,7 +76,7 @@ class GenericDataset(pl.LightningDataModule):
             self.captions_tokens = {sentid: 
                                 torch.tensor(self.tokenizer.encode(
                                     self.data[sentid]['y']), 
-                                             dtype=torch.int64) for sentid in range(len(self.data))
+                                             dtype=torch.int64) for sentid in self.ids
                                }
             print("=> Saving all_len dict")
             all_len = torch.tensor([self.captions_tokens[sentid].shape[0] for sentid in self.captions_tokens]).float()
@@ -93,7 +98,6 @@ class GenericDataset(pl.LightningDataModule):
             self.input_modality = self.cfg.encoder.modality
         
         # Get all caption and image ids (they are the same)
-        self.ids = list(self.data.keys())
         random.shuffle(self.ids)
         
         # Sample data
@@ -114,7 +118,7 @@ class GenericDataset(pl.LightningDataModule):
         with open(x_embed_mean_path, 'rb') as f:
             self.x_embed_mean = pickle.load(f)
         
-        self.std = math.sqrt(0.016) # hyperparam from capdec paper
+        self.std = cfg.noise_level #math.sqrt(0.016) # hyperparam from capdec paper
         
     def get_data_path(self, cfg, split):
         if split == 'train':
@@ -135,8 +139,10 @@ class GenericDataset(pl.LightningDataModule):
             x_embed_mean_path = VIDEO_EMBED_MEAN
         elif self.dataset_type == DatasetType.Medical:
             text_to_x_gap_path = TEXT_TO_MED_GAP_PATH
-            text_embed_mean_path = TEXT_CONVIRT_EMBED_MEAN
-            x_embed_mean_path = MED_IMAGES_EMBED_MEAN
+            # text_embed_mean_path = TEXT_MEDCLIP_EMBED_MEAN #
+            # x_embed_mean_path = MED_IMAGES_MEDCLIP_EMBED_MEAN
+            text_embed_mean_path = TEXT_MEDCLIP_NO_AUG_EMBED_MEAN
+            x_embed_mean_path = MED_IMAGES_MEDCLIP_NO_AUG_EMBED_MEAN
         elif self.dataset_type == DatasetType.Amino_Acid:
             text_to_x_gap_path = TEXT_TO_AMINO_ACID_GAP_PATH
             text_embed_mean_path = TEXT_CLASP_EMBED_MEAN
@@ -144,6 +150,8 @@ class GenericDataset(pl.LightningDataModule):
         else:
             raise NotImplementedError(f"dataset type {self.dataset_type} not implemented")
         
+        print(text_embed_mean_path)
+        print(x_embed_mean_path)
         return text_to_x_gap_path, text_embed_mean_path, x_embed_mean_path
     
     def __len__(self) -> int:
@@ -198,13 +206,13 @@ class GenericDataset(pl.LightningDataModule):
             
         # Get output
         if self.output_modality == Modality.Language:
-            tokens, mask = self.pad_tokens(item)
+            tokens, mask = self.pad_tokens(id_)
             label = (tokens, mask)
         
         # Re-normalize
         x_prefix = torch.nn.functional.normalize(x_prefix, dim=-1)
         text_prefix = torch.nn.functional.normalize(text_prefix, dim=-1)
-        return (x_prefix, text_prefix), label, id_, item
+        return (x_prefix, text_prefix), label, id_, id_
     
     def get_item_per_image(self, item: int) -> Tuple[torch.Tensor, ...]:
         # this is for iterating over images (image captioning or image reconstruction)
@@ -216,9 +224,9 @@ class GenericDataset(pl.LightningDataModule):
         
         if self.remove_modality_gap:
             # note: the gap was computed as vid - text
-            x_prefix -= self.text_to_x_modality_gap 
+            x_prefix -= self.text_to_x_modality_gap.squeeze()
         elif self.remove_mean:
-            x_prefix -= self.x_embed_mean
+            x_prefix -= self.x_embed_mean.squeeze()
 
         dummy_prefix = torch.zeros_like(x_prefix)
         dummy_tokens = torch.zeros(self.max_seq_len)
@@ -226,7 +234,7 @@ class GenericDataset(pl.LightningDataModule):
 
         # Re-normalize
         x_prefix = torch.nn.functional.normalize(x_prefix, dim=-1)
-        return (x_prefix, dummy_prefix), (dummy_tokens, dummy_mask), id_, item
+        return (x_prefix, dummy_prefix), (dummy_tokens, dummy_mask), id_, id_
     
 ## To get stuff:
 # video_embed = self.data[video_id]["x_embed"]

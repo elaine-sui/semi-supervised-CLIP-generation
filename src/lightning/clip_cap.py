@@ -104,7 +104,7 @@ class ClipCaptionLightningModel(pl.LightningModule):
 
     def test_epoch_end(self, test_step_outputs):        
         # Write predictions to json
-        split="test"
+        split=self.cfg.test_split #"test"
         add_predictions_to_results_json(predictions=test_step_outputs, 
                                         output_dir=self.cfg.output_dir, split=split)
         

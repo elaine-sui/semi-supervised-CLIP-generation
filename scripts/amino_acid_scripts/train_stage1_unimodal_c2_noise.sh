@@ -3,4 +3,5 @@ python3 run.py \
     --normalize_prefix \
     --add_gaussian_noise \
     --train \
-    --test
+    --test \
+    --noise_level 1.0

@@ -3,8 +3,8 @@ experiment_name: 'amino_acid_stage1_unimodal_text_reconstruction_train'
 lightning:
   trainer:
     gpus: 1
-    max_epochs: 10
-    lr: 2e-5
+    max_epochs: 40
+    lr: 5e-6
     precision: 16
     auto_lr_find: false
   checkpoint_callback:
@@ -57,5 +57,5 @@ train:
     name: 'AdamW'
   scheduler:
     name: 'linear_schedule_with_warmup'
-    warmup_steps: 80
+    warmup_steps: 25
 

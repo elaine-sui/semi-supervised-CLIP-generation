@@ -3,7 +3,7 @@ experiment_name: 'video_stage1_unimodal_text_reconstruction_train'
 lightning:
   trainer:
     gpus: 1
-    max_epochs: 10
+    max_epochs: 20
     lr: 2e-5
     precision: 16
     auto_lr_find: false
@@ -42,9 +42,9 @@ data:
   dataset: 'video'
   seed: 1234
   train_split: 'train'
-  train_data_path: '/pasteur/u/esui/data/c3/data_videoclip_train.pkl'
-  val_data_path: '/pasteur/u/esui/data/c3/data_videoclip_val.pkl'
-  test_data_path: '/pasteur/u/esui/data/c3/data_videoclip_test.pkl'
+  train_data_path: '/pasteur/u/esui/data/c3/data_videoclip_3k_train.pkl'
+  val_data_path: '/pasteur/u/esui/data/c3/data_videoclip_3k_val.pkl'
+  test_data_path: '/pasteur/u/esui/data/c3/data_videoclip_3k_test.pkl'
   out_dir: '/pasteur/u/esui/data/c3/clip_prefix_videoclip_ckpts'
     
 train: 
@@ -57,5 +57,5 @@ train:
     name: 'AdamW'
   scheduler:
     name: 'linear_schedule_with_warmup'
-    warmup_steps: 80
+    warmup_steps: 400
 

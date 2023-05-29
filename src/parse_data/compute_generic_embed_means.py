@@ -10,22 +10,30 @@ sys.path.append(os.getcwd())
 from src.enums import DatasetType
 # from ..enums import DatasetType
 
-TEXT_VIDEOCLIP_EMBED_MEAN = '/pasteur/u/esui/data/c3/normalized_text_videoclip_embed_mean.pkl'
-VIDEO_EMBED_MEAN = '/pasteur/u/esui/data/c3/normalized_text_video_embed_mean.pkl'
-TEXT_CONVIRT_EMBED_MEAN = '/pasteur/u/esui/data/c3/normalized_text_convirt_embed_mean.pkl'
-MED_IMAGES_EMBED_MEAN = '/pasteur/u/esui/data/c3/normalized_text_med_image_embed_mean.pkl'
+TEXT_VIDEOCLIP_EMBED_MEAN = '/pasteur/u/esui/data/c3/normalized_text_videoclip_3k_embed_mean.pkl'
+VIDEO_EMBED_MEAN = '/pasteur/u/esui/data/c3/normalized_text_video_3k_embed_mean.pkl'
+TEXT_CONVIRT_EMBED_MEAN = '/pasteur/u/esui/data/c3/normalized_text_convirt_10k_embed_mean.pkl'
+TEXT_MEDCLIP_EMBED_MEAN = '/pasteur/u/esui/data/c3/normalized_text_medclip_10k_embed_mean.pkl'
+MED_IMAGES_MEDCLIP_EMBED_MEAN = '/pasteur/u/esui/data/c3/normalized_text_medclip_med_image_10k_embed_mean.pkl'
+TEXT_MEDCLIP_NO_AUG_EMBED_MEAN = '/pasteur/u/esui/data/c3/normalized_text_medclip_no_aug_10k_embed_mean.pkl'
+MED_IMAGES_MEDCLIP_NO_AUG_EMBED_MEAN = '/pasteur/u/esui/data/c3/normalized_text_medclip_no_aug_med_image_10k_embed_mean.pkl'
+MED_IMAGES_EMBED_MEAN = '/pasteur/u/esui/data/c3/normalized_text_med_image_10k_embed_mean.pkl'
 TEXT_CLASP_EMBED_MEAN = '/pasteur/u/esui/data/c3/normalized_text_clasp_embed_mean.pkl'
 AMINO_ACID_EMBED_MEAN = '/pasteur/u/esui/data/c3/normalized_text_amino_acid_embed_mean.pkl'
 
 def get_data_paths(dataset_type):
     if dataset_type == DatasetType.Video:
-        data_path =  '/pasteur/u/esui/data/c3/data_videoclip_train.pkl'
+        data_path =  '/pasteur/u/esui/data/c3/data_videoclip_3k_train.pkl'
         text_mean_path = TEXT_VIDEOCLIP_EMBED_MEAN
         x_mean_path = VIDEO_EMBED_MEAN
     elif dataset_type == DatasetType.Medical:
-        data_path =  '/pasteur/u/esui/data/c3/data_convirt_train.pkl'
-        text_mean_path = TEXT_CONVIRT_EMBED_MEAN
-        x_mean_path = MED_IMAGES_EMBED_MEAN
+        # data_path =  '/pasteur/u/esui/data/c3/data_convirt_10k_train.pkl'
+        # text_mean_path = TEXT_CONVIRT_EMBED_MEAN
+        # x_mean_path = MED_IMAGES_EMBED_MEAN
+        # data_path = '/pasteur/u/esui/data/c3/data_medclip_10k_train.pkl'
+        data_path = '/pasteur/u/esui/data/c3/data_medclip_no_aug_10k_train.pkl'
+        text_mean_path = TEXT_MEDCLIP_NO_AUG_EMBED_MEAN
+        x_mean_path = MED_IMAGES_MEDCLIP_NO_AUG_EMBED_MEAN
     elif dataset_type == DatasetType.Amino_Acid:
         data_path =  '/pasteur/u/esui/data/c3/data_clasp_train.pkl'
         text_mean_path = TEXT_CLASP_EMBED_MEAN
@@ -47,7 +55,7 @@ def main(dataset_type):
     text_mean = torch.zeros((1, embed_dim)) # embed dim
     x_mean = torch.zeros((1, embed_dim)) # embed dim
         
-    for item in tqdm(all_data):
+    for id, item in tqdm(all_data.items()):
         text_embed = torch.from_numpy(item['y_embed'])
         x_embed = torch.from_numpy(item['x_embed'])
         text_mean += text_embed / text_embed.norm()

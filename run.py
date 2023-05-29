@@ -5,6 +5,7 @@ import os
 import numpy as np
 import wandb
 import yaml
+import math
 
 from src import utils, builder
 
@@ -69,6 +70,13 @@ def parse_configs():
         default=None,
         help="whether to add gaussian noise to input embeds",
     )
+
+    parser.add_argument(
+        "--noise_level",
+        default=math.sqrt(0.016),
+        type=float,
+        help="noise level",
+    )
     parser.add_argument("--lr", type=float, default=None, help="learning rate")
     parser.add_argument("--test_split", type=str, default="test", help="test split")
     parser.add_argument("--random_seed", type=int, default=1234, help="random seed")
@@ -114,13 +122,14 @@ def parse_configs():
         
     cfg.data.add_gaussian_noise = args.add_gaussian_noise
     if args.add_gaussian_noise:
-        cfg.experiment_name += f"_add_gaussian_noise"
+        cfg.experiment_name += f"_add_gaussian_noise_level_{round(args.noise_level, 3)}"
 
     if args.lr:
         cfg.lightning.trainer.lr = args.lr
         cfg.experiment_name += f"_lr_{args.lr}"
         
     cfg.test_split = args.test_split
+    cfg.noise_level = args.noise_level
 
     # get current time
     now = datetime.datetime.now(tz.tzlocal())
