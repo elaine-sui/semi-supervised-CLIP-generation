@@ -122,7 +122,7 @@ def parse_configs():
         
     cfg.data.add_gaussian_noise = args.add_gaussian_noise
     if args.add_gaussian_noise:
-        cfg.experiment_name += f"_add_gaussian_noise_level_{round(args.noise_level, 3)}"
+        cfg.experiment_name += f"_add_gaussian_noise_level_{round(args.noise_level, 4)}"
 
     if args.lr:
         cfg.lightning.trainer.lr = args.lr

@@ -34,7 +34,7 @@ class DataModule(pl.LightningDataModule):
             pin_memory=True,
             drop_last=False,
             shuffle=False,
-            batch_size=self.cfg.train.batch_size,
+            batch_size=1, #self.cfg.train.batch_size,
             num_workers=self.cfg.train.num_workers,
         )
 

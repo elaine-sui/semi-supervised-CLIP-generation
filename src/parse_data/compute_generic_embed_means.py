@@ -20,6 +20,8 @@ MED_IMAGES_MEDCLIP_NO_AUG_EMBED_MEAN = '/pasteur/u/esui/data/c3/normalized_text_
 MED_IMAGES_EMBED_MEAN = '/pasteur/u/esui/data/c3/normalized_text_med_image_10k_embed_mean.pkl'
 TEXT_CLASP_EMBED_MEAN = '/pasteur/u/esui/data/c3/normalized_text_clasp_embed_mean.pkl'
 AMINO_ACID_EMBED_MEAN = '/pasteur/u/esui/data/c3/normalized_text_amino_acid_embed_mean.pkl'
+TEXT_AUDIO_EMBED_MEAN = '/pasteur/u/esui/data/c3/normalized_text_imagebind_embed_mean.pkl'
+AUDIO_EMBED_MEAN = '/pasteur/u/esui/data/c3/normalized_text_audio_imagebind_embed_mean.pkl'
 
 def get_data_paths(dataset_type):
     if dataset_type == DatasetType.Video:
@@ -38,6 +40,10 @@ def get_data_paths(dataset_type):
         data_path =  '/pasteur/u/esui/data/c3/data_clasp_train.pkl'
         text_mean_path = TEXT_CLASP_EMBED_MEAN
         x_mean_path = AMINO_ACID_EMBED_MEAN
+    elif dataset_type == DatasetType.Audio:
+        data_path = '/pasteur/u/esui/data/c3/data_audio_clotho_imagebind_train.pkl'
+        text_mean_path = TEXT_AUDIO_EMBED_MEAN
+        x_mean_path = AUDIO_EMBED_MEAN
     else:
         raise NotImplementedError(f"dataset type {dataset_type} not implemented")
     
@@ -76,7 +82,7 @@ def main(dataset_type):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--dataset_type', type=str, default='video', choices=['video', 'medical', 'amino_acid'])
+    parser.add_argument('--dataset_type', type=str, default='video', choices=['video', 'medical', 'amino_acid', 'audio'])
     args = parser.parse_args()
 
     print(f"Dataset type: {args.dataset_type}")

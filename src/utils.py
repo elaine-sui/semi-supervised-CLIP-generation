@@ -35,17 +35,23 @@ def get_2d_sincos_pos_embed(embed_dim, grid_size, cls_token=False):
     return pos_embed
 
 
-def get_pred_filename(output_dir, split):
-    return os.path.join(output_dir, f'{split}_pred.json')
+def get_pred_filename(output_dir, split, epoch=None):
+    if epoch:
+        return os.path.join(output_dir, f'{split}_epoch_{epoch}_pred.json')
+    else:
+        return os.path.join(output_dir, f'{split}_pred.json')
 
-def get_metrics_out_filename(output_dir, split):
-    return os.path.join(output_dir, f'{split}_metrics.json')
+def get_metrics_out_filename(output_dir, split, epoch=None):
+    if epoch:
+        return os.path.join(output_dir, f'{split}_epoch_{epoch}_metrics.json')
+    else:
+        return os.path.join(output_dir, f'{split}_metrics.json')
 
 
-def add_predictions_to_results_json(predictions, output_dir, split):
+def add_predictions_to_results_json(predictions, output_dir, split, epoch):
     
     os.makedirs(output_dir, exist_ok=True)
-    filepath = get_pred_filename(output_dir, split)
+    filepath = get_pred_filename(output_dir, split, epoch)
     all_preds = []
     # if os.path.exists(filepath):
     #     with open(filepath, 'r') as f:

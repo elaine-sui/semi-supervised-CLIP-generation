@@ -26,6 +26,9 @@ from ..parse_data import (
     AMINO_ACID_EMBED_MEAN,
     TEXT_MEDCLIP_NO_AUG_EMBED_MEAN,
     MED_IMAGES_MEDCLIP_NO_AUG_EMBED_MEAN,
+    TEXT_AUDIO_EMBED_MEAN,
+    AUDIO_EMBED_MEAN,
+    TEXT_TO_AUDIO_GAP_PATH
 )
 
 class GenericDataset(pl.LightningDataModule):
@@ -89,7 +92,7 @@ class GenericDataset(pl.LightningDataModule):
         self.output_modality = self.cfg.decoder.modality
         
         # In testing, input modality must be opposite of output modality to evaluate cross-modal task
-        if self.split == "test":
+        if self.split != "train":
             if self.output_modality == Modality.Vision:
                 self.input_modality = Modality.Language
             else:
@@ -147,6 +150,10 @@ class GenericDataset(pl.LightningDataModule):
             text_to_x_gap_path = TEXT_TO_AMINO_ACID_GAP_PATH
             text_embed_mean_path = TEXT_CLASP_EMBED_MEAN
             x_embed_mean_path = AMINO_ACID_EMBED_MEAN
+        elif self.dataset_type == DatasetType.Audio:
+            text_to_x_gap_path = TEXT_TO_AUDIO_GAP_PATH
+            text_embed_mean_path = TEXT_AUDIO_EMBED_MEAN
+            x_embed_mean_path = AUDIO_EMBED_MEAN
         else:
             raise NotImplementedError(f"dataset type {self.dataset_type} not implemented")
         
@@ -179,7 +186,7 @@ class GenericDataset(pl.LightningDataModule):
     def __getitem__(self, item: int) -> Tuple[torch.Tensor, ...]:
         # For testing, assume cross-modal
         
-        if (self.split == "test" and self.output_modality == Modality.Language) or \
+        if (self.split != "train" and self.output_modality == Modality.Language) or \
             (self.input_modality == Modality.Vision and self.output_modality == Modality.Vision):
             return self.get_item_per_image(item)
         

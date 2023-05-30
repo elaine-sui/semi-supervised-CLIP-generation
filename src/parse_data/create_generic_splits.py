@@ -20,6 +20,8 @@ def get_data_paths(dataset_type):
         data_path = '/pasteur/u/esui/data/c3/data_medclip_no_aug_10k.pkl'
     elif dataset_type == DatasetType.Amino_Acid:
         data_path =  '/pasteur/u/yuhuiz/archive/neurips_modality_gap/pull_figure/data_clasp.pkl'
+    elif dataset_type == DatasetType.Audio:
+        data_path = '/pasteur/u/yuhuiz/compositional_generation/ImageBind/data_audio_clotho_imagebind.pkl'
     else:
         raise NotImplementedError(f"dataset type {dataset_type} not implemented")
 
@@ -34,23 +36,30 @@ def main(args):
     print(f"Loading data from {data_path}")
     with open(data_path, 'rb') as f:
         all_data = pickle.load(f)
-
-    # Shuffle -- seeded
-    random.Random(args.seed).shuffle(all_data)
-
+    
     ids = list(range(len(all_data)))
 
-    # Split
-    num_train = int(len(all_data) * args.train_ratio)
-    train_data = all_data[:num_train]
-    train_data = dict(zip(ids[:num_train], train_data))
+    if 'split' in all_data[0]:
+        train_data = [d for d in all_data if d['split'] == 'train']
+        train_data = dict(zip(ids[:len(train_data)], train_data))
+        val_data = [d for d in all_data if d['split'] == 'test']
+        val_data = dict(zip(ids[len(train_data):], val_data))
+        test_data = val_data
+    else:
+        # Shuffle -- seeded
+        random.Random(args.seed).shuffle(all_data)
 
-    num_test = int(len(all_data) * args.test_ratio)
-    test_data = all_data[-num_test:]
-    test_data = dict(zip(ids[-num_test:], test_data))
+        # Split
+        num_train = int(len(all_data) * args.train_ratio)
+        train_data = all_data[:num_train]
+        train_data = dict(zip(ids[:num_train], train_data))
 
-    val_data = all_data[num_train:-num_test]
-    val_data = dict(zip(ids[num_train:-num_test], val_data))
+        num_test = int(len(all_data) * args.test_ratio)
+        test_data = all_data[-num_test:]
+        test_data = dict(zip(ids[-num_test:], test_data))
+
+        val_data = all_data[num_train:-num_test]
+        val_data = dict(zip(ids[num_train:-num_test], val_data))
 
     # Save to pickle
     file_name = os.path.split(data_path)[1]
@@ -66,7 +75,7 @@ def main(args):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--dataset_type', type=str, default='video', choices=['video', 'medical', 'amino_acid'])
+    parser.add_argument('--dataset_type', type=str, default='video', choices=['video', 'medical', 'amino_acid', 'audio'])
     parser.add_argument('--train_ratio', type=float, default=0.8)
     parser.add_argument('--test_ratio', type=float, default=0.1)
     parser.add_argument('--seed', type=int, default=1234)

@@ -6,7 +6,8 @@ from .compute_embed_means import TEXT_EMBED_MEAN, IMAGE_EMBED_MEAN
 from .compute_generic_modality_gap import (
     TEXT_TO_VID_GAP_PATH, 
     TEXT_TO_MED_GAP_PATH,
-    TEXT_TO_AMINO_ACID_GAP_PATH
+    TEXT_TO_AMINO_ACID_GAP_PATH,
+    TEXT_TO_AUDIO_GAP_PATH
 )
 
 from .compute_generic_embed_means import (
@@ -20,6 +21,8 @@ from .compute_generic_embed_means import (
     AMINO_ACID_EMBED_MEAN,
     TEXT_MEDCLIP_NO_AUG_EMBED_MEAN,
     MED_IMAGES_MEDCLIP_NO_AUG_EMBED_MEAN,
+    TEXT_AUDIO_EMBED_MEAN,
+    AUDIO_EMBED_MEAN
 )
 
 from .create_generic_labels_json import get_label_json_list

@@ -14,3 +14,4 @@ class DatasetType(str, Enum):
     Video = 'video'
     Medical = 'medical'
     Amino_Acid = 'amino_acid'
+    Audio = 'audio'

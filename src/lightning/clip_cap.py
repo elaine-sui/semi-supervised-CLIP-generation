@@ -40,13 +40,15 @@ class ClipCaptionLightningModel(pl.LightningModule):
         return loss
     
     def validation_step(self, batch, batch_idx):
-        loss, outputs = self.shared_loss_step(batch, split='val')
+        # loss, outputs = self.shared_loss_step(batch, split='val')
+        # return loss
         
-        if type(self.logger) == WandbLogger and self.output_modality == Modality.Vision:
-            labels = batch[1]
-            self.log_generated_images(outputs[:2], labels[:2])
+        if self.output_modality ==  Modality.Vision:
+            self.input_modality = Modality.Language
+        else:
+            self.input_modality = Modality.Vision
         
-        return loss
+        return self.eval_step(batch, split='val')
         
     def test_step(self, batch, batch_idx):
         if self.output_modality ==  Modality.Vision:
@@ -91,7 +93,6 @@ class ClipCaptionLightningModel(pl.LightningModule):
     
     def eval_step(self, batch, split):
         # Note: batch size = 1
-        # import pdb; pdb.set_trace()
         _, _, img_id, cap_id = batch
         
         prefix, _ = self.get_prefix_and_labels(batch)
@@ -102,17 +103,30 @@ class ClipCaptionLightningModel(pl.LightningModule):
 
         return {"image_id": img_id.item(), "caption": pred, "id": cap_id.item()}
 
-    def test_epoch_end(self, test_step_outputs):        
+    def validation_epoch_end(self, val_step_outputs):
+        # import pdb; pdb.set_trace()
+        return self.shared_epoch_end(val_step_outputs, 'val') 
+
+    def test_epoch_end(self, test_step_outputs):   
+        return self.shared_epoch_end(test_step_outputs, 'test') 
+
+    def shared_epoch_end(self, outputs, split):   
+        # import pdb; pdb.set_trace() 
         # Write predictions to json
-        split=self.cfg.test_split #"test"
-        add_predictions_to_results_json(predictions=test_step_outputs, 
-                                        output_dir=self.cfg.output_dir, split=split)
+        if split == 'test':
+            split = self.cfg.test_split 
+
+        epoch = self.current_epoch if self.current_epoch else 0
+        add_predictions_to_results_json(predictions=outputs, 
+                                        output_dir=self.cfg.output_dir, 
+                                        split=split, 
+                                        epoch=epoch)
         
         # Compute eval metrics
-        pred_file = get_pred_filename(self.cfg.output_dir, split)
+        pred_file = get_pred_filename(self.cfg.output_dir, split, epoch=epoch)
         print(f"=> Predictions at {pred_file}")
 
-        out_file = get_metrics_out_filename(self.cfg.output_dir, split)
+        out_file = get_metrics_out_filename(self.cfg.output_dir, split, epoch=epoch)
         if self.cfg.data.dataset == 'coco':
             metrics_dict = evaluate_on_coco_caption(pred_file, LABELS_JSONS_LST[split], out_file)
         else:

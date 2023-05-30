@@ -13,6 +13,7 @@ from src.enums import DatasetType
 TEXT_TO_VID_GAP_PATH = '/pasteur/u/esui/data/c3/normalized_cap_to_vid_gap.pkl'
 TEXT_TO_MED_GAP_PATH = '/pasteur/u/esui/data/c3/normalized_cap_to_med_img_gap.pkl'
 TEXT_TO_AMINO_ACID_GAP_PATH = '/pasteur/u/esui/data/c3/normalized_cap_to_amino_acid_gap.pkl'
+TEXT_TO_AUDIO_GAP_PATH = '/pasteur/u/esui/data/c3/normalized_cap_to_audio_gap.pkl'
 
 def get_data_paths(dataset_type):
     if dataset_type == DatasetType.Video:
@@ -25,6 +26,9 @@ def get_data_paths(dataset_type):
     elif dataset_type == DatasetType.Amino_Acid:
         data_path =  '/pasteur/u/esui/data/c3/data_clasp_train.pkl'
         gap_path = TEXT_TO_AMINO_ACID_GAP_PATH
+    elif dataset_type == DatasetType.Audio:
+        data_path = '/pasteur/u/esui/data/c3/data_audio_clotho_imagebind_train.pkl'
+        gap_path = TEXT_TO_AUDIO_GAP_PATH
     else:
         raise NotImplementedError(f"dataset type {dataset_type} not implemented")
     
@@ -58,7 +62,7 @@ def main(dataset_type):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--dataset_type', type=str, default='video', choices=['video', 'medical', 'amino_acid'])
+    parser.add_argument('--dataset_type', type=str, default='video', choices=['video', 'medical', 'amino_acid', 'audio'])
     args = parser.parse_args()
 
     print(f"Dataset type: {args.dataset_type}")
