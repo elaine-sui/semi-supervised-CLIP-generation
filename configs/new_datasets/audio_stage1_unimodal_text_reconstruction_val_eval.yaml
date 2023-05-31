@@ -9,10 +9,10 @@ lightning:
     auto_lr_find: false
     num_sanity_val_steps: 0
   checkpoint_callback:
-    monitor: 'val_loss_epoch'
+    monitor: 'val/ROUGE_L'
     dirpath: '/pasteur/u/esui/data/c3/audio_imagebind_ckpt'
     save_last: true
-    mode: 'min'
+    mode: 'max'
     save_top_k: 2
   logger:
     logger_type: 'WandbLogger'
@@ -49,7 +49,7 @@ data:
   out_dir: '/pasteur/u/esui/data/c3/clip_prefix_audio_imagebind_ckpts'
     
 train: 
-  batch_size: 128
+  batch_size: 40
   num_workers: 8
   loss_fn: 
     name: 'ce_caption_loss'
@@ -57,5 +57,5 @@ train:
     name: 'AdamW'
   scheduler:
     name: 'linear_schedule_with_warmup'
-    warmup_steps: 200
+    warmup_steps: 600
 

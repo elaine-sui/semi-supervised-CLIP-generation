@@ -36,26 +36,24 @@ class ClipCaptionLightningModel(pl.LightningModule):
             return optimizer
     
     def training_step(self, batch, batch_idx):
+        self.input_modality = Modality.Language
         loss, outputs = self.shared_loss_step(batch, split='train')
         return loss
     
     def validation_step(self, batch, batch_idx):
-        # loss, outputs = self.shared_loss_step(batch, split='val')
-        # return loss
-        
-        if self.output_modality ==  Modality.Vision:
-            self.input_modality = Modality.Language
-        else:
+        if self.cfg.val_eval:
             self.input_modality = Modality.Vision
-        
-        return self.eval_step(batch, split='val')
+            return self.eval_step(batch, split='val')
+        else:
+            if self.cfg.cross_modal_val:
+                self.input_modality = Modality.Vision
+            else:
+                self.input_modality = Modality.Language
+            loss, outputs = self.shared_loss_step(batch, split='val')
+            return loss
         
     def test_step(self, batch, batch_idx):
-        if self.output_modality ==  Modality.Vision:
-            self.input_modality = Modality.Language
-        else:
-            self.input_modality = Modality.Vision
-        
+        self.input_modality = Modality.Vision
         return self.eval_step(batch, split='test')
 
     def get_prefix_and_labels(self, batch):
@@ -105,7 +103,8 @@ class ClipCaptionLightningModel(pl.LightningModule):
 
     def validation_epoch_end(self, val_step_outputs):
         # import pdb; pdb.set_trace()
-        return self.shared_epoch_end(val_step_outputs, 'val') 
+        if self.cfg.val_eval:
+            return self.shared_epoch_end(val_step_outputs, 'val') 
 
     def test_epoch_end(self, test_step_outputs):   
         return self.shared_epoch_end(test_step_outputs, 'test') 

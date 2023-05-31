@@ -11,8 +11,9 @@ def get_data_paths(dataset_type):
     output_folder = '/pasteur/u/esui/data/c3'
 
     if dataset_type == DatasetType.Video:
+        data_path = '/pasteur/u/yuhuiz/compositional_generation/ImageBind/data_video_msrvtt_imagebind.pkl'
         # data_path =  '/pasteur/u/yuhuiz/archive/neurips_modality_gap/pull_figure/data_videoclip.pkl'
-        data_path = '/pasteur/u/yuhuiz/archive/neurips_modality_gap/pull_figure/data_videoclip_3k.pkl'
+        # data_path = '/pasteur/u/yuhuiz/archive/neurips_modality_gap/pull_figure/data_videoclip_3k.pkl'
     elif dataset_type == DatasetType.Medical:
         # data_path =  '/pasteur/u/yuhuiz/archive/neurips_modality_gap/pull_figure/data_convirt.pkl'
         # data_path = '/pasteur/u/yuhuiz/archive/neurips_modality_gap/pull_figure/data_convirt_10k.pkl'
@@ -41,8 +42,13 @@ def main(args):
 
     if 'split' in all_data[0]:
         train_data = [d for d in all_data if d['split'] == 'train']
-        train_data = dict(zip(ids[:len(train_data)], train_data))
         val_data = [d for d in all_data if d['split'] == 'test']
+        
+        if len(val_data) > 5000:
+            train_data.extend(val_data[:-5000])
+            val_data = val_data[-5000:]
+        
+        train_data = dict(zip(ids[:len(train_data)], train_data))
         val_data = dict(zip(ids[len(train_data):], val_data))
         test_data = val_data
     else:

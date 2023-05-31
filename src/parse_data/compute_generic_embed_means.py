@@ -23,11 +23,17 @@ AMINO_ACID_EMBED_MEAN = '/pasteur/u/esui/data/c3/normalized_text_amino_acid_embe
 TEXT_AUDIO_EMBED_MEAN = '/pasteur/u/esui/data/c3/normalized_text_imagebind_embed_mean.pkl'
 AUDIO_EMBED_MEAN = '/pasteur/u/esui/data/c3/normalized_text_audio_imagebind_embed_mean.pkl'
 
+TEXT_IMAGEBIND_VIDEO_EMBED_MEAN = '/pasteur/u/esui/data/c3/normalized_text_imagebind_video_embed_mean.pkl'
+VIDEO_IMAGEBIND_EMBED_MEAN = '/pasteur/u/esui/data/c3/normalized_text_video_imagebind_embed_mean.pkl'
+
 def get_data_paths(dataset_type):
     if dataset_type == DatasetType.Video:
-        data_path =  '/pasteur/u/esui/data/c3/data_videoclip_3k_train.pkl'
-        text_mean_path = TEXT_VIDEOCLIP_EMBED_MEAN
-        x_mean_path = VIDEO_EMBED_MEAN
+        data_path = '/pasteur/u/esui/data/c3/data_video_msrvtt_imagebind_train.pkl'
+        text_mean_path = TEXT_IMAGEBIND_VIDEO_EMBED_MEAN
+        x_mean_path = VIDEO_IMAGEBIND_EMBED_MEAN
+        # data_path =  '/pasteur/u/esui/data/c3/data_videoclip_3k_train.pkl'
+        # text_mean_path = TEXT_VIDEOCLIP_EMBED_MEAN
+        # x_mean_path = VIDEO_EMBED_MEAN
     elif dataset_type == DatasetType.Medical:
         # data_path =  '/pasteur/u/esui/data/c3/data_convirt_10k_train.pkl'
         # text_mean_path = TEXT_CONVIRT_EMBED_MEAN

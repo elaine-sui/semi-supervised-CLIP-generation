@@ -29,12 +29,13 @@ class DataModule(pl.LightningDataModule):
 
     def val_dataloader(self):
         dataset = self.dataset(self.cfg, split="val")
+        bs = 1 if self.cfg.val_eval else self.cfg.train.batch_size
         return DataLoader(
             dataset,
             pin_memory=True,
             drop_last=False,
             shuffle=False,
-            batch_size=1, #self.cfg.train.batch_size,
+            batch_size=bs,
             num_workers=self.cfg.train.num_workers,
         )
 

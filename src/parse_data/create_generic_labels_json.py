@@ -20,9 +20,13 @@ def get_label_json_list(dataset_type):
 
 def get_data_paths(dataset_type):
     if dataset_type == DatasetType.Video:
-        train_data_path =  '/pasteur/u/esui/data/c3/data_videoclip_3k_train.pkl'
-        val_data_path =  '/pasteur/u/esui/data/c3/data_videoclip_3k_val_test.pkl'
-        test_data_path =  '/pasteur/u/esui/data/c3/data_videoclip_3k_val_test.pkl'
+        train_data_path = '/pasteur/u/esui/data/c3/data_video_msrvtt_imagebind_train.pkl'
+        val_data_path = '/pasteur/u/esui/data/c3/data_video_msrvtt_imagebind_val.pkl'
+        test_data_path = '/pasteur/u/esui/data/c3/data_video_msrvtt_imagebind_test.pkl'
+
+        # train_data_path =  '/pasteur/u/esui/data/c3/data_videoclip_3k_train.pkl'
+        # val_data_path =  '/pasteur/u/esui/data/c3/data_videoclip_3k_val_test.pkl'
+        # test_data_path =  '/pasteur/u/esui/data/c3/data_videoclip_3k_val_test.pkl'
     elif dataset_type == DatasetType.Medical:
         # train_data_path =  '/pasteur/u/esui/data/c3/data_convirt_10k_train.pkl'
         # val_data_path =  '/pasteur/u/esui/data/c3/data_convirt_10k_val.pkl'

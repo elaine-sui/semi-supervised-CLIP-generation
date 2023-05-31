@@ -28,7 +28,9 @@ from ..parse_data import (
     MED_IMAGES_MEDCLIP_NO_AUG_EMBED_MEAN,
     TEXT_AUDIO_EMBED_MEAN,
     AUDIO_EMBED_MEAN,
-    TEXT_TO_AUDIO_GAP_PATH
+    TEXT_TO_AUDIO_GAP_PATH,
+    TEXT_IMAGEBIND_VIDEO_EMBED_MEAN,
+    VIDEO_IMAGEBIND_EMBED_MEAN
 )
 
 class GenericDataset(pl.LightningDataModule):
@@ -69,30 +71,35 @@ class GenericDataset(pl.LightningDataModule):
         
         ###################
         
-        if os.path.isfile(f"{data_path[:-4]}_tokens.pkl"):
-            print("=> Loading captions_tokens, all_len dicts")
-            with open(f"{data_path[:-4]}_tokens.pkl", 'rb') as f:
-                self.captions_tokens, all_len = pickle.load(f)
-        else:
-            # {caption_id: tokenizer(caption)}
-            print("=> Saving captions_tokens dict")
-            self.captions_tokens = {sentid: 
-                                torch.tensor(self.tokenizer.encode(
-                                    self.data[sentid]['y']), 
-                                             dtype=torch.int64) for sentid in self.ids
-                               }
-            print("=> Saving all_len dict")
-            all_len = torch.tensor([self.captions_tokens[sentid].shape[0] for sentid in self.captions_tokens]).float()
-            
-            with open(f"{data_path[:-4]}_tokens.pkl", 'wb') as f:
-                pickle.dump([self.captions_tokens, all_len], f)
+        # if os.path.isfile(f"{data_path[:-4]}_tokens.pkl"):
+        #     print("=> Loading captions_tokens, all_len dicts")
+        #     with open(f"{data_path[:-4]}_tokens.pkl", 'rb') as f:
+        #         self.captions_tokens, all_len = pickle.load(f)
+        # else:
+        # {caption_id: tokenizer(caption)}
+        print("=> Saving captions_tokens dict")
+        self.captions_tokens = {sentid: 
+                            torch.tensor(self.tokenizer.encode(
+                                self.data[sentid]['y']), 
+                                            dtype=torch.int64) for sentid in self.ids
+                            }
+        print("=> Saving all_len dict")
+        all_len = torch.tensor([self.captions_tokens[sentid].shape[0] for sentid in self.captions_tokens]).float()
+        
+        with open(f"{data_path[:-4]}_tokens.pkl", 'wb') as f:
+            pickle.dump([self.captions_tokens, all_len], f)
         
         self.max_seq_len = min(int(all_len.mean() + all_len.std() * 10), int(all_len.max()))
     
         self.output_modality = self.cfg.decoder.modality
         
         # In testing, input modality must be opposite of output modality to evaluate cross-modal task
-        if self.split != "train":
+        if self.cfg.cross_modal_val:
+            self.condition = self.split != "train"
+        else:
+            self.condition = self.split == "test"
+        
+        if self.condition:
             if self.output_modality == Modality.Vision:
                 self.input_modality = Modality.Language
             else:
@@ -138,8 +145,10 @@ class GenericDataset(pl.LightningDataModule):
     def get_gap_and_mean_paths(self):
         if self.dataset_type == DatasetType.Video:
             text_to_x_gap_path = TEXT_TO_VID_GAP_PATH
-            text_embed_mean_path = TEXT_VIDEOCLIP_EMBED_MEAN
-            x_embed_mean_path = VIDEO_EMBED_MEAN
+            # text_embed_mean_path = TEXT_VIDEOCLIP_EMBED_MEAN
+            # x_embed_mean_path = VIDEO_EMBED_MEAN
+            text_embed_mean_path = TEXT_IMAGEBIND_VIDEO_EMBED_MEAN
+            x_embed_mean_path = VIDEO_IMAGEBIND_EMBED_MEAN
         elif self.dataset_type == DatasetType.Medical:
             text_to_x_gap_path = TEXT_TO_MED_GAP_PATH
             # text_embed_mean_path = TEXT_MEDCLIP_EMBED_MEAN #
@@ -167,7 +176,6 @@ class GenericDataset(pl.LightningDataModule):
     def pad_tokens(self, item: int):
         """
         Note: this is only for language generation 
-        (the image padding is in the forward fn of ViT Decoder)
         """
         tokens = self.captions_tokens[item]
         padding = self.max_seq_len - tokens.shape[0]
@@ -186,7 +194,7 @@ class GenericDataset(pl.LightningDataModule):
     def __getitem__(self, item: int) -> Tuple[torch.Tensor, ...]:
         # For testing, assume cross-modal
         
-        if (self.split != "train" and self.output_modality == Modality.Language) or \
+        if (self.condition and self.output_modality == Modality.Language) or \
             (self.input_modality == Modality.Vision and self.output_modality == Modality.Vision):
             return self.get_item_per_image(item)
         
@@ -235,13 +243,17 @@ class GenericDataset(pl.LightningDataModule):
         elif self.remove_mean:
             x_prefix -= self.x_embed_mean.squeeze()
 
-        dummy_prefix = torch.zeros_like(x_prefix)
-        dummy_tokens = torch.zeros(self.max_seq_len)
-        dummy_mask = torch.cat((torch.ones(self.prefix_length), dummy_tokens), dim=0)
+        tokens, mask = self.pad_tokens(id_)
+        label = (tokens, mask)
+
+        # dummy_prefix = torch.zeros_like(x_prefix)
+        # dummy_tokens = torch.zeros(self.max_seq_len)
+        # dummy_mask = torch.cat((torch.ones(self.prefix_length), dummy_tokens), dim=0)
 
         # Re-normalize
+        # import pdb; pdb.set_trace()
         x_prefix = torch.nn.functional.normalize(x_prefix, dim=-1)
-        return (x_prefix, dummy_prefix), (dummy_tokens, dummy_mask), id_, id_
+        return (x_prefix, x_prefix), label, id_, id_
     
 ## To get stuff:
 # video_embed = self.data[video_id]["x_embed"]

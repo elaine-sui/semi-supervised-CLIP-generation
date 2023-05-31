@@ -84,6 +84,9 @@ def parse_configs():
     parser.add_argument("--checkpoint", type=str, default=None)
     parser.add_argument("--output_dir", type=str, default="output")
 
+    parser.add_argument("--val_eval", action="store_true", help='whether to run evaluation over validation')
+    parser.add_argument("--cross_modal_val", action="store_true", help='whether to run cross-modal evaluation over validation')
+
     parser = Trainer.add_argparse_args(parser)
 
     args, unknown = parser.parse_known_args()
@@ -96,6 +99,9 @@ def parse_configs():
     cfg.hyperparameters = cli_flat  # hyperparameter defaults
     if args.gpus is not None:
         cfg.lightning.trainer.gpus = str(args.gpus)
+
+    cfg.val_eval = args.val_eval
+    cfg.cross_modal_val = args.cross_modal_val
 
     cfg.checkpoint = args.checkpoint
     if cfg.checkpoint and "train+restval" in cfg.checkpoint:
@@ -122,7 +128,7 @@ def parse_configs():
         
     cfg.data.add_gaussian_noise = args.add_gaussian_noise
     if args.add_gaussian_noise:
-        cfg.experiment_name += f"_add_gaussian_noise_level_{round(args.noise_level, 4)}"
+        cfg.experiment_name += f"_add_gaussian_noise_level_{round(args.noise_level, 5)}"
 
     if args.lr:
         cfg.lightning.trainer.lr = args.lr
