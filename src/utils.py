@@ -68,13 +68,13 @@ def get_best_ckpt_path(ckpt_paths, ascending=False):
     return best_ckpt_path
 
 def evaluate_list(gens, refs):
-    rouge_score = rouge.compute(prediction=gens, references=refs)
+    rouge_score = rouge.compute(predictions=gens, references=refs)
     bleu_score = bleu.compute(predictions=gens, references=refs)
     meteor_score = meteor.compute(predictions=gens, references=refs)
     metrics_dict = {}
     metrics_dict.update(rouge_score)
-    metrics_dict.update(bleu_score)
-    metrics_dict.update(meteor_score)
+    metrics_dict['bleu'] = bleu_score['bleu']
+    metrics_dict['meteor'] = meteor_score['meteor']
 
     return metrics_dict
     

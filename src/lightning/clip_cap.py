@@ -25,6 +25,9 @@ class ClipCaptionLightningModel(pl.LightningModule):
         self.output_modality = cfg.decoder.modality
         
         self.tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
+
+        self.validation_step_outputs = []
+        self.test_step_outputs = []
     
     def configure_optimizers(self):
         optimizer = builder.build_optimizer(self.cfg, self.model)
@@ -45,7 +48,8 @@ class ClipCaptionLightningModel(pl.LightningModule):
         if self.cfg.val_eval:
             ## TODO: change evaluation to use the huggingface evaluate library. Also output sample captions
             self.input_modality = Modality.Vision
-            return self.quick_eval_step(batch, 'val')
+            out = self.quick_eval_step(batch, 'val')
+            self.validation_step_outputs.append(out)
         else:
             if self.cfg.cross_modal_val:
                 self.input_modality = Modality.Vision
@@ -56,7 +60,8 @@ class ClipCaptionLightningModel(pl.LightningModule):
         
     def test_step(self, batch, batch_idx):
         self.input_modality = Modality.Vision
-        return self.eval_step(batch, split='test')
+        out = self.eval_step(batch, split='test')
+        self.test_step_outputs.append(out)
 
     def get_prefix_and_labels(self, batch):
         prefix, labels, gold_caption, img_id, cap_id = batch
@@ -115,25 +120,27 @@ class ClipCaptionLightningModel(pl.LightningModule):
         return {"pred": pred, "refs": gold_captions}
 
 
-    def on_validation_epoch_end(self, val_step_outputs):
-        if self.cfg.val_eval:
-            preds = [o['pred'] for o in val_step_outputs]
-            refs = [o['refs'] for o in val_step_outputs]
+    def on_validation_epoch_end(self):
+        if self.cfg.val_eval and len(self.validation_step_outputs) > 0:
+            preds = [o['pred'] for o in self.validation_step_outputs]
+            refs = [o['refs'] for o in self.validation_step_outputs]
             scores = evaluate_list(preds, refs)
         
             for metric, val in scores.items():
                 self.log(f"val/{metric}", val, on_epoch=True, logger=True, prog_bar=True)
             
             if isinstance(self.logger, WandbLogger):
-                for output in val_step_outputs[:10]:
+                for output in self.validation_step_outputs[:10]:
                     pred = output['pred']
                     refs = ['\n'.join(r) for r in output['refs']]
 
                     df = pd.DataFrame({'pred': pred, 'refs': refs})
                     self.logger.log_text(key='generated captions', dataframe=df)
+        self.validation_step_outputs.clear()
 
-    def on_test_epoch_end(self, test_step_outputs):   
-        return self.shared_epoch_end(test_step_outputs, 'test') 
+    def on_test_epoch_end(self):   
+        self.shared_epoch_end(self.test_step_outputs, 'test') 
+        self.test_step_outputs.clear()
 
     def shared_epoch_end(self, outputs, split):   
         # import pdb; pdb.set_trace() 
