@@ -167,7 +167,7 @@ def create_directories(cfg):
     # set directory names
     cfg.output_dir = f"{DATA_PREFIX}/data/output/{cfg.experiment_name}/{cfg.extension}"
     cfg.lightning.logger.name = f"{cfg.experiment_name}/{cfg.extension}"
-    cfg.lightning.checkpoint_callback.dirpath = f"{DATA_PREFIX}/data/{cfg.data.dataset}/ckpt/{cfg.experiment_name}/{cfg.extension}"
+    cfg.lightning.checkpoint_callback.dirpath = f"{DATA_PREFIX}/data/c3/{cfg.data.dataset}/ckpt/{cfg.experiment_name}/{cfg.extension}"
 
     # create directories
     if not os.path.exists(cfg.lightning.logger.save_dir):
