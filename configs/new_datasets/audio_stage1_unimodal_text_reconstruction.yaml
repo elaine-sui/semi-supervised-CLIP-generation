@@ -3,17 +3,16 @@ experiment_name: 'audio_stage1_unimodal_text_reconstruction_train'
 lightning:
   trainer:
     gpus: 1
-    max_epochs: 10
-    lr: 2e-5
+    max_epochs: 50
+    lr: 1e-3
     precision: 16
     auto_lr_find: false
     num_sanity_val_steps: 0
   checkpoint_callback:
-    monitor: 'val_loss_epoch'
+    monitor: 'val/ROUGE_L'
     dirpath: '/pasteur/u/esui/data/c3/audio_imagebind_ckpt'
     save_last: true
-    mode: 'min'
-    save_top_k: 2
+    mode: 'max'
   logger:
     logger_type: 'WandbLogger'
     save_dir: '/pasteur/u/esui/data/logger/'
@@ -49,13 +48,10 @@ data:
   out_dir: '/pasteur/u/esui/data/c3/clip_prefix_audio_imagebind_ckpts'
     
 train: 
-  batch_size: 128
+  batch_size: 64
   num_workers: 8
   loss_fn: 
     name: 'ce_caption_loss'
   optimizer: 
     name: 'AdamW'
-  scheduler:
-    name: 'linear_schedule_with_warmup'
-    warmup_steps: 200
 

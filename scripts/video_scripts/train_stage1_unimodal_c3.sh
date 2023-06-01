@@ -4,5 +4,4 @@ python3 run.py \
     --add_gaussian_noise \
     --remove_mean \
     --train \
-    --test \
-    --noise_level 0.001
+    --test

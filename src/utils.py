@@ -3,6 +3,11 @@ import json
 import os
 import yaml
 import pandas as pd
+import evaluate
+
+rouge = evaluate.load('rouge')
+bleu = evaluate.load('bleu')
+meteor = evaluate.load('meteor')
 
 def flatten(d, parent_key="", sep="."):
     """flatten a nested dictionary"""
@@ -81,5 +86,16 @@ def get_best_ckpt_path(ckpt_paths, ascending=False):
     )
 
     return best_ckpt_path
+
+def evaluate_list(gens, refs):
+    rouge_score = rouge.compute(predictions=gens, references=refs)
+    bleu_score = bleu.compute(predictions=gens, references=refs)
+    meteor_score = meteor.compute(predictions=gens, references=refs)
+    metrics_dict = {}
+    metrics_dict.update(rouge_score)
+    metrics_dict.update(bleu_score)
+    metrics_dict.update(meteor_score)
+
+    return metrics_dict
     
         

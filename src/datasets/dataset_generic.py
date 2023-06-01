@@ -203,6 +203,7 @@ class GenericDataset(pl.LightningDataModule):
         
         x_prefix = torch.from_numpy(self.data[id_]["x_embed"]).float()
         text_prefix = torch.from_numpy(self.data[id_]["y_embed"]).float()
+        text = self.data[id_]['y']
         
         if self.normalize_prefix:
             x_prefix = x_prefix / x_prefix.norm(2, -1)
@@ -227,7 +228,7 @@ class GenericDataset(pl.LightningDataModule):
         # Re-normalize
         x_prefix = torch.nn.functional.normalize(x_prefix, dim=-1)
         text_prefix = torch.nn.functional.normalize(text_prefix, dim=-1)
-        return (x_prefix, text_prefix), label, id_, id_
+        return (x_prefix, text_prefix), label, [text], id_, id_
     
     def get_item_per_image(self, item: int) -> Tuple[torch.Tensor, ...]:
         # this is for iterating over images (image captioning or image reconstruction)
@@ -245,6 +246,7 @@ class GenericDataset(pl.LightningDataModule):
 
         tokens, mask = self.pad_tokens(id_)
         label = (tokens, mask)
+        text = self.data[id_]['y']
 
         # dummy_prefix = torch.zeros_like(x_prefix)
         # dummy_tokens = torch.zeros(self.max_seq_len)
@@ -253,7 +255,7 @@ class GenericDataset(pl.LightningDataModule):
         # Re-normalize
         # import pdb; pdb.set_trace()
         x_prefix = torch.nn.functional.normalize(x_prefix, dim=-1)
-        return (x_prefix, x_prefix), label, id_, id_
+        return (x_prefix, x_prefix), label, [text], id_, id_
     
 ## To get stuff:
 # video_embed = self.data[video_id]["x_embed"]

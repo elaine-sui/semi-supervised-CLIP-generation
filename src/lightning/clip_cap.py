@@ -2,13 +2,14 @@ import pytorch_lightning as pl
 from omegaconf import OmegaConf
 from transformers import GPT2Tokenizer
 import torch
+import pandas as pd
 
 from pytorch_lightning.loggers import WandbLogger
 
 from .. import builder
 from ..enums import Modality
 from ..eval import generate2, evaluate_on_coco_caption
-from ..utils import add_predictions_to_results_json, get_pred_filename, get_metrics_out_filename
+from ..utils import add_predictions_to_results_json, get_pred_filename, get_metrics_out_filename, evaluate_list
 from ..parse_data import LABELS_JSONS_LST, get_label_json_list
 from ..models import Decoder
 
@@ -42,8 +43,9 @@ class ClipCaptionLightningModel(pl.LightningModule):
     
     def validation_step(self, batch, batch_idx):
         if self.cfg.val_eval:
+            ## TODO: change evaluation to use the huggingface evaluate library. Also output sample captions
             self.input_modality = Modality.Vision
-            return self.eval_step(batch, split='val')
+            return self.quick_eval_step(batch, 'val')
         else:
             if self.cfg.cross_modal_val:
                 self.input_modality = Modality.Vision
@@ -57,7 +59,7 @@ class ClipCaptionLightningModel(pl.LightningModule):
         return self.eval_step(batch, split='test')
 
     def get_prefix_and_labels(self, batch):
-        prefix, labels, img_id, cap_id = batch
+        prefix, labels, gold_caption, img_id, cap_id = batch
         
         if self.input_modality == Modality.Vision:
             prefix = prefix[0]
@@ -88,10 +90,10 @@ class ClipCaptionLightningModel(pl.LightningModule):
         
         return loss, outputs
     
-    
+
     def eval_step(self, batch, split):
         # Note: batch size = 1
-        _, _, img_id, cap_id = batch
+        _, _, gold_caption, img_id, cap_id = batch
         
         prefix, _ = self.get_prefix_and_labels(batch)
             
@@ -100,11 +102,35 @@ class ClipCaptionLightningModel(pl.LightningModule):
         pred = generate2(self.model, self.tokenizer, embed=prefix_embed)
 
         return {"image_id": img_id.item(), "caption": pred, "id": cap_id.item()}
+    
+    def quick_eval_step(self, batch, split):
+        # Note: batch size = 1
+        _, _, gold_captions, img_id, cap_id = batch
+        
+        prefix, _ = self.get_prefix_and_labels(batch)
+        prefix_embed = self.model.clip_project(prefix).reshape(-1, self.model.prefix_length, 
+                                                               self.model.embed_size)
+        pred = generate2(self.model, self.tokenizer, embed=prefix_embed)
+
+        return {"pred": pred, "refs": gold_captions}
+
 
     def validation_epoch_end(self, val_step_outputs):
-        # import pdb; pdb.set_trace()
         if self.cfg.val_eval:
-            return self.shared_epoch_end(val_step_outputs, 'val') 
+            preds = [o['pred'] for o in val_step_outputs]
+            refs = [o['refs'] for o in val_step_outputs]
+            scores = evaluate_list(preds, refs)
+        
+            for metric, val in scores.items():
+                self.log(f"val/{metric}", val, on_epoch=True, logger=True, prog_bar=True)
+            
+            for output in val_step_outputs[:10]:
+                # TODO: test if this works!
+                pred = output['pred']
+                refs = output['refs']
+
+                df = pd.DataFrame({'pred': pred, 'refs': refs})
+                self.logger.log_text('generations', dataframe=df)
 
     def test_epoch_end(self, test_step_outputs):   
         return self.shared_epoch_end(test_step_outputs, 'test') 
@@ -138,17 +164,3 @@ class ClipCaptionLightningModel(pl.LightningModule):
             self.log(f"{split}/{k}", v, on_epoch=True, logger=True, prog_bar=True)
             
     
-    def log_generated_images(self, pred, gt_images):
-        
-        pred = self.model.model.unpatchify(pred)
-        imgs = []
-        for i in range(len(pred)):
-            # concat each pred w/ corresponding ground truth
-            img = torch.concat((pred[i], gt_images[i]), dim=-1)
-            imgs.append(img)
-        
-        # self.logger.experiment.log({
-        #     "samples": [wandb.Image(img, caption=caption) 
-        #     for (img, caption) in my_images]
-        # })
-        self.logger.log_image(key="val samples", images=imgs)

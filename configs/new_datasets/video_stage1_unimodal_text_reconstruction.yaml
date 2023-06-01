@@ -3,18 +3,17 @@ experiment_name: 'video_stage1_unimodal_text_reconstruction_train'
 lightning:
   trainer:
     gpus: 1
-    max_epochs: 10
-    lr: 2e-5
+    max_epochs: 5
+    lr: 1e-3
     precision: 16
     auto_lr_find: false
     num_sanity_val_steps: 0
     check_val_every_n_epochs: 1 # can change
   checkpoint_callback:
-    monitor: 'val_loss_epoch'
+    monitor: 'val/ROUGE_L'
     dirpath: '/pasteur/u/esui/data/c3/video_imagebind_ckpt'
     save_last: true
-    mode: 'min'
-    save_top_k: 2
+    mode: 'max'
   logger:
     logger_type: 'WandbLogger'
     save_dir: '/pasteur/u/esui/data/logger/'
@@ -55,13 +54,9 @@ data:
     
 train: 
   batch_size: 64
-  accumulate_grad_batches: 2
   num_workers: 8
   loss_fn: 
     name: 'ce_caption_loss'
   optimizer: 
     name: 'AdamW'
-  scheduler:
-    name: 'linear_schedule_with_warmup'
-    warmup_steps: 6000
 
