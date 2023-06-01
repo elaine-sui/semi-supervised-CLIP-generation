@@ -3,13 +3,10 @@ import torch.nn as nn
 from omegaconf import OmegaConf
 from typing import Optional
 
-from .vit_decoder import ViTDecoder
 from .builder import build_huggingface_model
 from .mlp import MLP
 from .transformer_mapper import TransformerMapper
 from ..enums import Modality, MappingType
-from ..utils import get_2d_sincos_pos_embed
-from ..eval import generate2
 
 """
 Code adapted from: https://github.com/rmokady/CLIP_prefix_caption/blob/main/train.py
@@ -22,10 +19,7 @@ class Decoder(nn.Module):
         
         self.modality = cfg.decoder.modality.lower()
         
-        if cfg.decoder.modality.lower() == Modality.Vision:
-            self.model = ViTDecoder(cfg)
-            self.embed_size = cfg.decoder.embed_dim
-        elif cfg.decoder.modality.lower() == Modality.Language:
+        if cfg.decoder.modality.lower() == Modality.Language:
             self.model = build_huggingface_model(cfg.decoder.model.lower())
             self.embed_size = self.model.transformer.wte.weight.shape[1]
         else:
@@ -90,16 +84,8 @@ class Decoder(nn.Module):
         
         return out    
     
-    def forward_vision(self, x):
-        x = self.clip_project(x).view(-1, self.prefix_length, self.embed_size)
-        x = self.model(x)
-
-        return x
-    
     def forward(self, **kwargs):
         if self.modality == Modality.Language:
             return self.forward_language(**kwargs)
-        elif self.modality == Modality.Vision:
-            return self.forward_vision(**kwargs)
         
         

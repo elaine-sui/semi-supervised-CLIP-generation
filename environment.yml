@@ -1,4 +1,4 @@
-name: clip_prefix_caption
+name: clip_prefix_caption2
 channels:
   - defaults
 dependencies:
@@ -20,4 +20,6 @@ dependencies:
    - numpy
    - pandas
    - scikit-learn
+   - evaluate
+   - rouge_score
 prefix: /pasteur/u/esui/miniconda3/envs/semi_supervised_clip

@@ -20,26 +20,6 @@ def flatten(d, parent_key="", sep="."):
             items.append((new_key, v))
     return dict(items)
 
-
-## From official MAE repo
-def get_2d_sincos_pos_embed(embed_dim, grid_size, cls_token=False):
-    """
-    grid_size: int of the grid height and width
-    return:
-    pos_embed: [grid_size*grid_size, embed_dim] or [1+grid_size*grid_size, embed_dim] (w/ or w/o cls_token)
-    """
-    grid_h = np.arange(grid_size, dtype=np.float32)
-    grid_w = np.arange(grid_size, dtype=np.float32)
-    grid = np.meshgrid(grid_w, grid_h)  # here w goes first
-    grid = np.stack(grid, axis=0)
-
-    grid = grid.reshape([2, 1, grid_size, grid_size])
-    pos_embed = get_2d_sincos_pos_embed_from_grid(embed_dim, grid)
-    if cls_token:
-        pos_embed = np.concatenate([np.zeros([1, embed_dim]), pos_embed], axis=0)
-    return pos_embed
-
-
 def get_pred_filename(output_dir, split, epoch=None):
     if epoch:
         return os.path.join(output_dir, f'{split}_epoch_{epoch}_pred.json')
@@ -88,7 +68,7 @@ def get_best_ckpt_path(ckpt_paths, ascending=False):
     return best_ckpt_path
 
 def evaluate_list(gens, refs):
-    rouge_score = rouge.compute(predictions=gens, references=refs)
+    rouge_score = rouge.compute(prediction=gens, references=refs)
     bleu_score = bleu.compute(predictions=gens, references=refs)
     meteor_score = meteor.compute(predictions=gens, references=refs)
     metrics_dict = {}

@@ -115,7 +115,7 @@ class ClipCaptionLightningModel(pl.LightningModule):
         return {"pred": pred, "refs": gold_captions}
 
 
-    def validation_epoch_end(self, val_step_outputs):
+    def on_validation_epoch_end(self, val_step_outputs):
         if self.cfg.val_eval:
             preds = [o['pred'] for o in val_step_outputs]
             refs = [o['refs'] for o in val_step_outputs]
@@ -124,15 +124,15 @@ class ClipCaptionLightningModel(pl.LightningModule):
             for metric, val in scores.items():
                 self.log(f"val/{metric}", val, on_epoch=True, logger=True, prog_bar=True)
             
-            for output in val_step_outputs[:10]:
-                # TODO: test if this works!
-                pred = output['pred']
-                refs = output['refs']
+            if isinstance(self.logger, WandbLogger):
+                for output in val_step_outputs[:10]:
+                    pred = output['pred']
+                    refs = ['\n'.join(r) for r in output['refs']]
 
-                df = pd.DataFrame({'pred': pred, 'refs': refs})
-                self.logger.log_text('generations', dataframe=df)
+                    df = pd.DataFrame({'pred': pred, 'refs': refs})
+                    self.logger.log_text(key='generated captions', dataframe=df)
 
-    def test_epoch_end(self, test_step_outputs):   
+    def on_test_epoch_end(self, test_step_outputs):   
         return self.shared_epoch_end(test_step_outputs, 'test') 
 
     def shared_epoch_end(self, outputs, split):   

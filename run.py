@@ -6,6 +6,7 @@ import numpy as np
 import wandb
 import yaml
 import math
+from copy import copy
 
 from src import utils, builder
 
@@ -87,7 +88,7 @@ def parse_configs():
     parser.add_argument("--val_eval", action="store_true", help='whether to run evaluation over validation')
     parser.add_argument("--cross_modal_val", action="store_true", help='whether to run cross-modal evaluation over validation')
 
-    parser = Trainer.add_argparse_args(parser)
+    # parser = Trainer.add_argparse_args(parser)
 
     args, unknown = parser.parse_known_args()
     cli = [u.strip("--") for u in unknown]  # remove strings leading to flag
@@ -97,6 +98,8 @@ def parse_configs():
     cli = OmegaConf.from_dotlist(cli)
     cli_flat = utils.flatten(cli)
     cfg.hyperparameters = cli_flat  # hyperparameter defaults
+
+    args.gpus = torch.cuda.device_count()
     if args.gpus is not None:
         cfg.lightning.trainer.gpus = str(args.gpus)
 
@@ -145,8 +148,6 @@ def parse_configs():
     # check debug
     if args.debug:
         cfg.train.num_workers = 0
-        cfg.lightning.trainer.gpus = 1
-        cfg.lightning.trainer.distributed_backend = None
 
     cfg.seed = args.random_seed
     seed_everything(args.random_seed)
@@ -186,7 +187,7 @@ def setup(cfg, test_split=False):
         cfg = create_directories(cfg)
 
         # logging
-        loggers = [pl_loggers.csv_logs.CSVLogger(cfg.output_dir)]
+        loggers = [] #[pl_loggers.csv_logs.CSVLogger(cfg.output_dir)]
         if "logger" in cfg.lightning:
             logger_type = cfg.lightning.logger.pop("logger_type")
             logger_class = getattr(pl_loggers, logger_type)
@@ -256,30 +257,29 @@ def setup(cfg, test_split=False):
     model = builder.build_lightning_model(cfg)
 
     # setup pytorch-lightning trainer
-    trainer_args = argparse.Namespace(**cfg.lightning.trainer)
-    trainer = Trainer.from_argparse_args(
-        args=trainer_args, deterministic=False, callbacks=callbacks, logger=loggers
+    lr = cfg.lightning.trainer.pop('lr')
+    cfg.lightning.trainer.pop('gpus')
+    trainer = Trainer(
+        **cfg.lightning.trainer, deterministic=False, callbacks=callbacks, logger=loggers
     )  # note: determinstic is set to True in eval/predict.py with warn_only=True
-
-    # auto learning rate finder
-    if trainer_args.auto_lr_find is not False:
-        lr_finder = trainer.tuner.lr_find(model, datamodule=dm)
-        new_lr = lr_finder.suggestion()
-        model.lr = new_lr
-        print(f"learning rate updated to {new_lr}")
+    
+    cfg.lightning.trainer.lr = lr
 
     return trainer, model, dm, checkpoint_callback
 
 
 def save_best_checkpoints(checkpoint_callback, cfg, return_best=True):
-    ckpt_paths = os.path.join(
-        cfg.lightning.checkpoint_callback.dirpath, "best_ckpts.yaml"
-    )
-    checkpoint_callback.to_yaml(filepath=ckpt_paths)
     if return_best:
-        ascending = cfg.lightning.checkpoint_callback.mode == "min"
-        best_ckpt_path = utils.get_best_ckpt_path(ckpt_paths, ascending)
-        return best_ckpt_path
+        return checkpoint_callback.best_model_path
+
+    # ckpt_paths = os.path.join(
+    #     cfg.lightning.checkpoint_callback.dirpath, "best_ckpts.yaml"
+    # )
+    # checkpoint_callback.to_yaml(filepath=ckpt_paths)
+    # if return_best:
+    #     ascending = cfg.lightning.checkpoint_callback.mode == "min"
+    #     best_ckpt_path = utils.get_best_ckpt_path(ckpt_paths, ascending)
+    #     return best_ckpt_path
 
 
 if __name__ == "__main__":
