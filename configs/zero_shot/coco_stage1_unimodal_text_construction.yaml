@@ -1,4 +1,4 @@
-experiment_name: 'audio_stage1_unimodal_text_reconstruction_train'
+experiment_name: 'coco_stage1_unimodal_text_reconstruction_train+restval'
 
 lightning:
   trainer:
@@ -8,7 +8,7 @@ lightning:
     precision: 16
   checkpoint_callback:
     monitor: 'val/rougeL'
-    dirpath: '/pasteur/u/esui/data/c3/audio_imagebind_ckpt'
+    dirpath: '/pasteur/u/esui/data/coco/ckpt'
     save_last: true
     mode: 'max'
     save_top_k: 1
@@ -20,13 +20,12 @@ lightning:
 
 encoder:
     modality: 'language' # 'language', 'both'
-    embed_dim: 1024
+    embed_dim: 512
 
 decoder:
     # Decode to language
     modality: 'language'
     model: 'gpt2'
-
 
 model: 
   num_layers: 8
@@ -38,13 +37,15 @@ model:
   gpt2_type: 'gpt2'
 
 data: 
-  dataset: 'audio'
+  dataset: 'coco'
   seed: 1234
-  train_split: 'train'
-  train_data_path: '/pasteur/u/esui/data/c3/data_audio_clotho_imagebind_train.pkl'
-  val_data_path: '/pasteur/u/esui/data/c3/data_audio_clotho_imagebind_val.pkl' 
-  test_data_path: '/pasteur/u/esui/data/c3/data_audio_clotho_imagebind_test.pkl'
-  out_dir: '/pasteur/u/esui/data/c3/clip_prefix_audio_imagebind_ckpts'
+  train_split: 'train+restval'
+  train_restval_data_path: '/pasteur/u/esui/data/coco/oscar_split_ViT-B_32_train+restval.pkl'
+  train_data_path: '/pasteur/u/esui/data/coco/oscar_split_ViT-B_32_train.pkl'
+  val_data_path: '/pasteur/u/esui/data/coco/oscar_split_ViT-B_32_val.pkl'
+  restval_data_path: '/pasteur/u/esui/data/coco/oscar_split_ViT-B_32_restval.pkl'
+  test_data_path: '/pasteur/u/esui/data/coco/oscar_split_ViT-B_32_test.pkl'
+  out_dir: '/pasteur/u/esui/data/coco/clip_prefix_cap_refactored_ckpts'
     
 train: 
   batch_size: 64

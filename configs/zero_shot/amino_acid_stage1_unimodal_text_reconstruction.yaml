@@ -2,13 +2,11 @@ experiment_name: 'amino_acid_stage1_unimodal_text_reconstruction_train'
 
 lightning:
   trainer:
-    gpus: 1
-    max_epochs: 40
-    lr: 5e-6
+    gpus: -1
+    max_epochs: 10
+    lr: 1e-3
     precision: 16
     auto_lr_find: false
-    num_sanity_val_steps: 0
-    check_val_every_n_epochs: 1 # can change
   checkpoint_callback:
     monitor: 'val/ROUGE_L'
     dirpath: '/pasteur/u/esui/data/c3/clasp_ckpt'
@@ -18,8 +16,8 @@ lightning:
   logger:
     logger_type: 'WandbLogger'
     save_dir: '/pasteur/u/esui/data/logger/'
-    name: 'clip_prefix_cap_extra_datasets'
-    project: 'clip_prefix_cap_coco'
+    name: 'c3'
+    project: 'c3'
 
 encoder:
     modality: 'language' # 'language', 'both'
@@ -50,14 +48,10 @@ data:
   out_dir: '/pasteur/u/esui/data/c3/clip_prefix_clasp_ckpts'
     
 train: 
-  batch_size: 20
-  accumulate_grad_batches: 2
+  batch_size: 64
   num_workers: 8
   loss_fn: 
     name: 'ce_caption_loss'
   optimizer: 
     name: 'AdamW'
-  scheduler:
-    name: 'linear_schedule_with_warmup'
-    warmup_steps: 25
 
