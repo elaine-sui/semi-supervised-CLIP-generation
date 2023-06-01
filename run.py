@@ -62,7 +62,14 @@ def parse_configs():
         "--normalize_prefix",
         action="store_true",
         default=None,
-        help="whether to normalize clip embeds or not",
+        help="whether to normalize clip embeds or not at the beginning (should be redundant)",
+    )
+
+    parser.add_argument(
+        "--re_normalize_prefix",
+        action="store_true",
+        default=None,
+        help="whether to normalize clip embeds or not at the very end",
     )
     
     parser.add_argument(
@@ -87,6 +94,8 @@ def parse_configs():
 
     parser.add_argument("--val_eval", action="store_true", help='whether to run evaluation over validation')
     parser.add_argument("--cross_modal_val", action="store_true", help='whether to run cross-modal evaluation over validation')
+
+    parser.add_argument("--subsample_val_test", action="store_true")
 
     # parser = Trainer.add_argparse_args(parser)
 
@@ -132,6 +141,16 @@ def parse_configs():
     cfg.data.add_gaussian_noise = args.add_gaussian_noise
     if args.add_gaussian_noise:
         cfg.experiment_name += f"_add_gaussian_noise_level_{round(args.noise_level, 5)}"
+    
+    cfg.model.re_normalize_prefix = args.re_normalize_prefix
+    if not args.re_normalize_prefix:
+        cfg.experiment_name += "_not_renormed"
+    
+    cfg.model.subsample_val_test = args.subsample_val_test
+    if args.subsample_val_test:
+        cfg.experiment_name += "_subsample_val_test"
+    
+    cfg.experiment_name += f"_{cfg.train.optimizer.name}"
 
     if args.lr:
         cfg.lightning.trainer.lr = args.lr

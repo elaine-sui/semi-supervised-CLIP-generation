@@ -11,6 +11,8 @@ from src.enums import DatasetType
 DATA_ROOT = '/pasteur/u/esui'
 splits = ["train", "val", "test"]
 
+# TODO Re-do data splits and whatnot with audio and video b/c of 1-to-X mapping!!!!
+
 def get_label_json_list(dataset_type):
     labels_jsons_lst = dict(zip(splits, 
                             [f"{DATA_ROOT}/data/c3/annotations/{dataset_type}_labels_{split}.json" for split in splits]))
@@ -23,6 +25,21 @@ def get_data_paths(dataset_type):
         train_data_path = '/pasteur/u/esui/data/c3/data_video_msrvtt_imagebind_train.pkl'
         val_data_path = '/pasteur/u/esui/data/c3/data_video_msrvtt_imagebind_val.pkl'
         test_data_path = '/pasteur/u/esui/data/c3/data_video_msrvtt_imagebind_test.pkl'
+
+        # train_data_path =  '/pasteur/u/esui/data/c3/data_videoclip_3k_train.pkl'
+        # val_data_path =  '/pasteur/u/esui/data/c3/data_videoclip_3k_val_test.pkl'
+        # test_data_path =  '/pasteur/u/esui/data/c3/data_videoclip_3k_val_test.pkl'
+    elif dataset_type == DatasetType.Medical:
+        # train_data_path =  '/pasteur/u/esui/data/c3/data_convirt_10k_train.pkl'
+        # val_data_path =  '/pasteur/u/esui/data/c3/data_convirt_10k_val.pkl'
+        # test_data_path =  '/pasteur/u/esui/data/c3/data_convirt_10k_test.pkl'
+        train_data_path = '/pasteur/u/esui/data/c3/data_medclip_no_aug_10k_train.pkl'
+        val_data_path = '/pasteur/u/esui/data/c3/data_medclip_no_aug_10k_val_test.pkl'
+        test_data_path = '/pasteur/u/esui/data/c3/data_medclip_no_aug_10k_val_test.pkl'
+    elif dataset_type == DatasetType.Amino_Acid:
+        train_data_path =  '/pasteur/u/esui/data/c3/data_clasp_train.pkl'
+        val_data_path =  '/pasteur/u/esui/data/c3/data_clasp_val.pkl'
+        test_data_path =  '/pasteur/u/esui/data/c3/data_clasp_test.pkl'
     elif dataset_type == DatasetType.Audio:
         train_data_path = '/pasteur/u/esui/data/c3/data_audio_clotho_imagebind_train.pkl'
         val_data_path = '/pasteur/u/esui/data/c3/data_audio_clotho_imagebind_val.pkl' 
@@ -58,13 +75,14 @@ def create_labels_json(dataset_type):
         test_data = pickle.load(f)
     
     for split, data in zip(splits, [train_data, val_data, test_data]):
-        for caption_id, d in tqdm(data['captions'].items()):
-            caption_dict = {"image_id": d['input_id'], "caption": d['caption'], "id": caption_id}
-            all_labels[split]["annotations"].append(caption_dict)
+        for i, id in tqdm(enumerate(data)):
+            caption = data[id]['y']
+            
+            image_dict = {"id": id}
+            all_labels[split]["images"].append(image_dict)
 
-            image_dict = {"id": d['input_id']}
-            if image_dict not in all_labels[split]["images"]:
-                all_labels[split]["images"].append(image_dict)
+            caption_dict = {"image_id": id, "caption": caption, "id": id}
+            all_labels[split]["annotations"].append(caption_dict)
             
     for split in splits:
         out_path = out_paths[split]
@@ -77,13 +95,13 @@ def create_labels_json(dataset_type):
 def print_anns_totals(all_labels):
     anns_totals = [len(all_labels[split]['annotations']) for split in splits]
     print(dict(zip(splits, anns_totals)))
-    print("Total number of inputs")
+    print("Total number of images")
     imgs_totals = [len(all_labels[split]['images']) for split in splits]
     print(dict(zip(splits, imgs_totals)))
         
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--dataset_type', type=str, default='video', choices=['video', 'audio'])
+    parser.add_argument('--dataset_type', type=str, default='video', choices=['video', 'medical', 'amino_acid', 'audio'])
     args = parser.parse_args()
 
     print(f"Dataset type: {args.dataset_type}")

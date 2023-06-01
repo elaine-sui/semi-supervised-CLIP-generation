@@ -1,9 +1,7 @@
 import torch
-import os
 import pickle
 import sys
 import random
-import math
 
 from typing import Tuple
 
@@ -14,24 +12,14 @@ from omegaconf import OmegaConf
 from ..enums import Modality, DatasetType
 from ..parse_data import (
     TEXT_TO_VID_GAP_PATH, 
-    TEXT_VIDEOCLIP_EMBED_MEAN, 
-    VIDEO_EMBED_MEAN,
-    TEXT_TO_MED_GAP_PATH,
-    TEXT_CONVIRT_EMBED_MEAN,
-    TEXT_MEDCLIP_EMBED_MEAN,
-    MED_IMAGES_EMBED_MEAN,
-    MED_IMAGES_MEDCLIP_EMBED_MEAN,
-    TEXT_TO_AMINO_ACID_GAP_PATH,
-    TEXT_CLASP_EMBED_MEAN,
-    AMINO_ACID_EMBED_MEAN,
-    TEXT_MEDCLIP_NO_AUG_EMBED_MEAN,
-    MED_IMAGES_MEDCLIP_NO_AUG_EMBED_MEAN,
     TEXT_AUDIO_EMBED_MEAN,
     AUDIO_EMBED_MEAN,
     TEXT_TO_AUDIO_GAP_PATH,
     TEXT_IMAGEBIND_VIDEO_EMBED_MEAN,
     VIDEO_IMAGEBIND_EMBED_MEAN
 )
+
+# TODO Re-do data splits and whatnot with audio and video b/c of 1-to-X mapping!!!!
 
 class GenericDataset(pl.LightningDataModule):
 
@@ -51,12 +39,10 @@ class GenericDataset(pl.LightningDataModule):
         
         data_path = self.get_data_path(cfg, split)
         
-        prefix_length = cfg.model.prefix_length
-        normalize_prefix = cfg.model.normalize_prefix
-        
         self.tokenizer = GPT2Tokenizer.from_pretrained(cfg.model.gpt2_type)
-        self.prefix_length = prefix_length
-        self.normalize_prefix = normalize_prefix
+        self.prefix_length = cfg.model.prefix_length
+        self.normalize_prefix = cfg.model.normalize_prefix
+        self.re_normalize_prefix = cfg.model.re_normalize_prefix
         
         ###################
         print("=> Loading all_data pkl")
@@ -65,29 +51,37 @@ class GenericDataset(pl.LightningDataModule):
         print("Number of items is %0d" % len(all_data))
         sys.stdout.flush()
         
-        # {id: {x_embed: ..., y_embed: ..., y: ...}}
-        self.data = all_data
-        self.ids = list(self.data.keys())
+        # {input_id: {"img_path": ..., "embed": ...}}
+        self.inputs = all_data["inputs"]
+        # {caption_id: {"caption": .., "input_id": .., "embed": ...}}
+        self.captions = all_data["captions"]
         
         ###################
         
-        # if os.path.isfile(f"{data_path[:-4]}_tokens.pkl"):
-        #     print("=> Loading captions_tokens, all_len dicts")
-        #     with open(f"{data_path[:-4]}_tokens.pkl", 'rb') as f:
-        #         self.captions_tokens, all_len = pickle.load(f)
-        # else:
+        # {caption_id: image_id}
+        print("=> Saving caption_id_2_input_id dict")
+        self.caption_id_2_input_id = {sentid: self.captions[sentid]["input_id"] for sentid in self.captions}
+
+        print("=> Saving input_id_2_caption_ids dict")
+        self.input_id_2_caption_ids = {}
+        for sentid in self.captions:
+            input_id = self.captions[sentid]['input_id']
+            if input_id not in self.input_id_2_caption_ids:
+                self.input_id_2_caption_ids[input_id] = []
+            self.input_id_2_caption_ids[input_id].append(sentid)
+
         # {caption_id: tokenizer(caption)}
         print("=> Saving captions_tokens dict")
         self.captions_tokens = {sentid: 
                             torch.tensor(self.tokenizer.encode(
-                                self.data[sentid]['y']), 
-                                            dtype=torch.int64) for sentid in self.ids
+                                self.captions[sentid]['caption']), 
+                                            dtype=torch.int64) for sentid in self.captions
                             }
         print("=> Saving all_len dict")
         all_len = torch.tensor([self.captions_tokens[sentid].shape[0] for sentid in self.captions_tokens]).float()
         
         with open(f"{data_path[:-4]}_tokens.pkl", 'wb') as f:
-            pickle.dump([self.captions_tokens, all_len], f)
+            pickle.dump([self.captions_tokens, self.caption_id_2_input_id, self.input_id_2_caption_ids, all_len], f)
         
         self.max_seq_len = min(int(all_len.mean() + all_len.std() * 10), int(all_len.max()))
     
@@ -107,14 +101,22 @@ class GenericDataset(pl.LightningDataModule):
         else:
             self.input_modality = self.cfg.encoder.modality
         
-        # Get all caption and image ids (they are the same)
-        random.shuffle(self.ids)
+        # Get all caption and image ids
+        self.input_ids = sorted(list(self.inputs.keys()))
+        random.shuffle(self.input_ids)
+        self.cap_ids = sorted(list(self.captions.keys()))
+        random.shuffle(self.cap_ids)
         
         # Sample data
         if "train" in self.split and not OmegaConf.is_none(cfg.data, 'sample_frac'):
-            sample_size = int(len(self.ids) * cfg.data.sample_frac)
-            self.ids = random.sample(self.ids, sample_size)
+            input_sample_size = int(len(self.input_ids) * cfg.data.sample_frac)
+            cap_sample_size = int(len(self.cap_ids) * cfg.data.sample_frac)
+            self.input_ids = random.sample(self.input_ids, input_sample_size)
+            self.cap_ids = random.sample(self.cap_ids, cap_sample_size)
         
+        print(f"Input dataset size (after possibly subsampling): {len(self.input_ids)}")
+        print(f"Caption dataset size (after possibly subsampling): {len(self.cap_ids)}")
+
         text_to_x_gap_path, text_embed_mean_path, x_embed_mean_path = self.get_gap_and_mean_paths()
 
         # Load modality gap
@@ -128,7 +130,7 @@ class GenericDataset(pl.LightningDataModule):
         with open(x_embed_mean_path, 'rb') as f:
             self.x_embed_mean = pickle.load(f)
         
-        self.std = cfg.noise_level #math.sqrt(0.016) # hyperparam from capdec paper
+        self.std = cfg.noise_level
         
     def get_data_path(self, cfg, split):
         if split == 'train':
@@ -145,20 +147,8 @@ class GenericDataset(pl.LightningDataModule):
     def get_gap_and_mean_paths(self):
         if self.dataset_type == DatasetType.Video:
             text_to_x_gap_path = TEXT_TO_VID_GAP_PATH
-            # text_embed_mean_path = TEXT_VIDEOCLIP_EMBED_MEAN
-            # x_embed_mean_path = VIDEO_EMBED_MEAN
             text_embed_mean_path = TEXT_IMAGEBIND_VIDEO_EMBED_MEAN
             x_embed_mean_path = VIDEO_IMAGEBIND_EMBED_MEAN
-        elif self.dataset_type == DatasetType.Medical:
-            text_to_x_gap_path = TEXT_TO_MED_GAP_PATH
-            # text_embed_mean_path = TEXT_MEDCLIP_EMBED_MEAN #
-            # x_embed_mean_path = MED_IMAGES_MEDCLIP_EMBED_MEAN
-            text_embed_mean_path = TEXT_MEDCLIP_NO_AUG_EMBED_MEAN
-            x_embed_mean_path = MED_IMAGES_MEDCLIP_NO_AUG_EMBED_MEAN
-        elif self.dataset_type == DatasetType.Amino_Acid:
-            text_to_x_gap_path = TEXT_TO_AMINO_ACID_GAP_PATH
-            text_embed_mean_path = TEXT_CLASP_EMBED_MEAN
-            x_embed_mean_path = AMINO_ACID_EMBED_MEAN
         elif self.dataset_type == DatasetType.Audio:
             text_to_x_gap_path = TEXT_TO_AUDIO_GAP_PATH
             text_embed_mean_path = TEXT_AUDIO_EMBED_MEAN
@@ -171,7 +161,15 @@ class GenericDataset(pl.LightningDataModule):
         return text_to_x_gap_path, text_embed_mean_path, x_embed_mean_path
     
     def __len__(self) -> int:
-        return len(self.ids) # b/c 1:1 img2text mapping
+        if (self.condition and self.output_modality == Modality.Language):
+            # Image captioning testing
+            return len(self.input_ids)
+        elif (self.input_modality == Modality.Vision and \
+              self.output_modality == Modality.Vision):
+            # Image reconstruction
+            return len(self.input_ids)
+        else:
+            return len(self.cap_ids)
 
     def pad_tokens(self, item: int):
         """
@@ -199,11 +197,12 @@ class GenericDataset(pl.LightningDataModule):
             return self.get_item_per_image(item)
         
         # Default for language generation
-        id_ = self.ids[item]
+        item = self.cap_ids[item]
+        input_id = self.caption_id_2_input_id[item]
         
-        x_prefix = torch.from_numpy(self.data[id_]["x_embed"]).float()
-        text_prefix = torch.from_numpy(self.data[id_]["y_embed"]).float()
-        text = self.data[id_]['y']
+        x_prefix = self.inputs[input_id]["embed"].float()
+        text_prefix = self.captions[item]["embed"].float()
+        text = self.captions[item]['caption']
         
         if self.normalize_prefix:
             x_prefix = x_prefix / x_prefix.norm(2, -1)
@@ -222,18 +221,19 @@ class GenericDataset(pl.LightningDataModule):
             
         # Get output
         if self.output_modality == Modality.Language:
-            tokens, mask = self.pad_tokens(id_)
+            tokens, mask = self.pad_tokens(item)
             label = (tokens, mask)
         
         # Re-normalize
-        x_prefix = torch.nn.functional.normalize(x_prefix, dim=-1)
-        text_prefix = torch.nn.functional.normalize(text_prefix, dim=-1)
-        return (x_prefix, text_prefix), label, [text], id_, id_
+        if self.re_normalize_prefix:
+            x_prefix = torch.nn.functional.normalize(x_prefix, dim=-1)
+            text_prefix = torch.nn.functional.normalize(text_prefix, dim=-1)
+        return (x_prefix, text_prefix), label, [text], input_id, item
     
     def get_item_per_image(self, item: int) -> Tuple[torch.Tensor, ...]:
         # this is for iterating over images (image captioning or image reconstruction)
-        id_ = self.ids[item]
-        x_prefix = torch.from_numpy(self.data[id_]["x_embed"]).float()
+        input_id = self.input_ids[item]
+        x_prefix = self.inputs[input_id]["embed"].float()
 
         if self.normalize_prefix:
             x_prefix = x_prefix / x_prefix.norm(2, -1)
@@ -244,20 +244,22 @@ class GenericDataset(pl.LightningDataModule):
         elif self.remove_mean:
             x_prefix -= self.x_embed_mean.squeeze()
 
-        tokens, mask = self.pad_tokens(id_)
-        label = (tokens, mask)
-        text = self.data[id_]['y']
+        # get all reference captions for input
+        caption_ids = self.input_id_2_caption_ids[input_id]
+        text = [self.captions[cap_id]['caption'] for cap_id in caption_ids]
 
-        # dummy_prefix = torch.zeros_like(x_prefix)
-        # dummy_tokens = torch.zeros(self.max_seq_len)
-        # dummy_mask = torch.cat((torch.ones(self.prefix_length), dummy_tokens), dim=0)
+        dummy_prefix = torch.zeros_like(x_prefix)
+        dummy_tokens = torch.zeros(self.max_seq_len)
+        dummy_mask = torch.cat((torch.ones(self.prefix_length), dummy_tokens), dim=0)
 
         # Re-normalize
-        # import pdb; pdb.set_trace()
-        x_prefix = torch.nn.functional.normalize(x_prefix, dim=-1)
-        return (x_prefix, x_prefix), label, [text], id_, id_
+        if self.re_normalize_prefix:
+            x_prefix = torch.nn.functional.normalize(x_prefix, dim=-1)
+        return (x_prefix, dummy_prefix), (dummy_tokens, dummy_mask), text, input_id, item
     
 ## To get stuff:
-# video_embed = self.data[video_id]["x_embed"]
-# caption_embed = self.data[video_id]["y_embed"]
-# caption = self.data[video_id]["y"]
+# file_path = self.inputs[input_id]["file_path"]
+# input_embed = self.inputs[input_id]["embed"]
+# caption = self.captions[sent_id]["caption"]
+# image_id_for_caption = self.captions[sent_id]["img_id"]
+# caption_embed = self.captions[sent_id]["embed"]

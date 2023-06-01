@@ -46,7 +46,6 @@ class ClipCaptionLightningModel(pl.LightningModule):
     
     def validation_step(self, batch, batch_idx):
         if self.cfg.val_eval:
-            ## TODO: change evaluation to use the huggingface evaluate library. Also output sample captions
             self.input_modality = Modality.Vision
             out = self.quick_eval_step(batch, 'val')
             self.validation_step_outputs.append(out)
@@ -130,12 +129,12 @@ class ClipCaptionLightningModel(pl.LightningModule):
                 self.log(f"val/{metric}", val, on_epoch=True, logger=True, prog_bar=True)
             
             if isinstance(self.logger, WandbLogger):
-                for output in self.validation_step_outputs[:10]:
+                for i, output in enumerate(self.validation_step_outputs[:10]):
                     pred = output['pred']
                     refs = ['\n'.join(r) for r in output['refs']]
 
                     df = pd.DataFrame({'pred': pred, 'refs': refs})
-                    self.logger.log_text(key='generated captions', dataframe=df)
+                    self.logger.log_text(key=f'generated_caption_{i}', dataframe=df)
         self.validation_step_outputs.clear()
 
     def on_test_epoch_end(self):   
