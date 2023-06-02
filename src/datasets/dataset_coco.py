@@ -35,12 +35,10 @@ class ClipCocoDataset(pl.LightningDataModule):
         
         data_path = self.get_data_path(cfg, split)
         
-        prefix_length = cfg.model.prefix_length
-        normalize_prefix = cfg.model.normalize_prefix
-        
         self.tokenizer = GPT2Tokenizer.from_pretrained(cfg.model.gpt2_type)
-        self.prefix_length = prefix_length
-        self.normalize_prefix = normalize_prefix
+        self.prefix_length = cfg.model.prefix_length
+        self.normalize_prefix = cfg.model.normalize_prefix
+        self.re_normalize_prefix = cfg.model.re_normalize_prefix
         
         ###################
         print("=> Loading all_data pkl")
@@ -60,11 +58,21 @@ class ClipCocoDataset(pl.LightningDataModule):
         if os.path.isfile(f"{data_path[:-4]}_tokens.pkl"):
             print("=> Loading caption_id_2_image_id, captions_tokens, all_len dicts")
             with open(f"{data_path[:-4]}_tokens.pkl", 'rb') as f:
-                self.captions_tokens, self.caption_id_2_image_id, all_len = pickle.load(f)
+                self.captions_tokens, self.caption_id_2_image_id, self.image_id_2_caption_ids, all_len = pickle.load(f)
         else:
             # {caption_id: image_id}
             print("=> Saving caption_id_2_image_id dict")
             self.caption_id_2_image_id = {sentid: self.captions[sentid]["img_id"] for sentid in self.captions}
+            
+            # {image_id: [caption_id]}
+            print("=> Saving image_id_2_caption_id dict")
+            self.image_id_2_caption_ids = {}
+            for sentid in self.captions:
+                image_id = self.caption_id_2_image_id[sentid]
+                if image_id not in self.image_id_2_caption_ids:
+                    self.image_id_2_caption_ids[image_id] = []
+                self.image_id_2_caption_ids[image_id].append(sentid)
+
             # {caption_id: tokenizer(caption)}
             print("=> Saving captions_tokens dict")
             self.captions_tokens = {sentid: 
@@ -76,14 +84,19 @@ class ClipCocoDataset(pl.LightningDataModule):
             all_len = torch.tensor([self.captions_tokens[sentid].shape[0] for sentid in self.captions_tokens]).float()
             
             with open(f"{data_path[:-4]}_tokens.pkl", 'wb') as f:
-                pickle.dump([self.captions_tokens, self.caption_id_2_image_id, all_len], f)
+                pickle.dump([self.captions_tokens, self.caption_id_2_image_id, self.image_id_2_caption_ids, all_len], f)
         
         self.max_seq_len = min(int(all_len.mean() + all_len.std() * 10), int(all_len.max()))
     
         self.output_modality = self.cfg.decoder.modality
         
         # In testing, input modality must be opposite of output modality to evaluate cross-modal task
-        if self.split == "test":
+        if self.cfg.cross_modal_val:
+            self.condition = self.split != "train"
+        else:
+            self.condition = self.split == "test"
+        
+        if self.condition:
             if self.output_modality == Modality.Vision:
                 self.input_modality = Modality.Language
             else:
@@ -103,6 +116,12 @@ class ClipCocoDataset(pl.LightningDataModule):
             cap_sample_size = int(len(self.cap_ids) * cfg.data.sample_frac)
             self.img_ids = random.sample(self.img_ids, img_sample_size)
             self.cap_ids = random.sample(self.cap_ids, cap_sample_size)
+
+        if self.split == "val" and self.cfg.cross_modal_val:
+            # Downsample validation set because running generation
+            print("=> Subsample 1k examples from validation set for generation")
+            img_sample_size = 1000
+            self.img_ids = random.sample(self.img_ids, img_sample_size)
         
         # Load modality gap
         with open(TEXT_TO_IMG_GAP_PATH, 'rb') as f:
@@ -140,12 +159,8 @@ class ClipCocoDataset(pl.LightningDataModule):
         return data_path
     
     def __len__(self) -> int:
-        if (self.split == "test" and self.output_modality == Modality.Language):
+        if (self.condition and self.output_modality == Modality.Language):
             # Image captioning testing
-            return len(self.img_ids)
-        elif (self.input_modality == Modality.Vision and \
-              self.output_modality == Modality.Vision):
-            # Image reconstruction
             return len(self.img_ids)
         else:
             return len(self.cap_ids)
@@ -172,13 +187,13 @@ class ClipCocoDataset(pl.LightningDataModule):
     def __getitem__(self, item: int) -> Tuple[torch.Tensor, ...]:
         # For testing, assume cross-modal
         
-        if (self.split == "test" and self.output_modality == Modality.Language) or \
-            (self.input_modality == Modality.Vision and self.output_modality == Modality.Vision):
+        if (self.condition and self.output_modality == Modality.Language):
             return self.get_item_per_image(item)
         
         # Default for language generation
         item = self.cap_ids[item]
         img_id = self.caption_id_2_image_id[item]
+        caption = self.captions[item]['caption']
         
         img_prefix = self.images[img_id]["embed"].float()
         text_prefix = self.captions[item]["embed"].float()
@@ -208,9 +223,11 @@ class ClipCocoDataset(pl.LightningDataModule):
             label = (tokens, mask)
         
         # Re-normalize
-        img_prefix = torch.nn.functional.normalize(img_prefix, dim=-1)
-        text_prefix = torch.nn.functional.normalize(text_prefix, dim=-1)
-        return (img_prefix, text_prefix), label, img_id, item
+        if self.re_normalize_prefix:
+            img_prefix = torch.nn.functional.normalize(img_prefix, dim=-1)
+            text_prefix = torch.nn.functional.normalize(text_prefix, dim=-1)
+
+        return (img_prefix, text_prefix), label, caption, img_id, item
     
     def get_item_per_image(self, item: int) -> Tuple[torch.Tensor, ...]:
         # this is for iterating over images (image captioning or image reconstruction)
@@ -230,9 +247,13 @@ class ClipCocoDataset(pl.LightningDataModule):
         dummy_tokens = torch.zeros(self.max_seq_len)
         dummy_mask = torch.cat((torch.ones(self.prefix_length), dummy_tokens), dim=0)
 
+        caption_ids = self.image_id_2_caption_ids[img_id]
+        captions = [self.captions[c]['caption'] for c in caption_ids]
+
         # Re-normalize
-        img_prefix = torch.nn.functional.normalize(img_prefix, dim=-1)
-        return (img_prefix, dummy_prefix), (dummy_tokens, dummy_mask), img_id, item
+        if self.re_normalize_prefix:
+            img_prefix = torch.nn.functional.normalize(img_prefix, dim=-1)
+        return (img_prefix, dummy_prefix), (dummy_tokens, dummy_mask), captions, img_id, item
     
 ## To get stuff:
 # image_path = self.images[img_id]["img_path"]

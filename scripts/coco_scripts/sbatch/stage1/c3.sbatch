@@ -7,7 +7,7 @@
 #SBATCH --account=pasteur
 #SBATCH --gres=gpu:1
 
-#SBATCH --job-name="c3"
+#SBATCH --job-name="coco_c3"
 #SBATCH --output=logs/log-%j.out # STDOUT
 
 # only use the following if you want email notification

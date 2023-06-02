@@ -4,7 +4,7 @@ lightning:
   trainer:
     devices: -1
     max_epochs: 10
-    lr: 1e-3
+    lr: 2e-5
     precision: 16
   checkpoint_callback:
     monitor: 'val/rougeL'

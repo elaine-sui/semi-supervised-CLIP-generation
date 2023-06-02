@@ -8,5 +8,6 @@ for seed in 1234 5678 910; do
         --test \
         --random_seed $seed \
         --val_eval \
-        --cross_modal_val
+        --cross_modal_val \
+        --re_normalize_prefix
 done

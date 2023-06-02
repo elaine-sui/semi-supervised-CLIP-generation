@@ -228,7 +228,7 @@ class GenericDataset(pl.LightningDataModule):
         if self.re_normalize_prefix:
             x_prefix = torch.nn.functional.normalize(x_prefix, dim=-1)
             text_prefix = torch.nn.functional.normalize(text_prefix, dim=-1)
-        return (x_prefix, text_prefix), label, [text], input_id, item
+        return (x_prefix, text_prefix), label, text, input_id, item
     
     def get_item_per_image(self, item: int) -> Tuple[torch.Tensor, ...]:
         # this is for iterating over images (image captioning or image reconstruction)
@@ -255,6 +255,7 @@ class GenericDataset(pl.LightningDataModule):
         # Re-normalize
         if self.re_normalize_prefix:
             x_prefix = torch.nn.functional.normalize(x_prefix, dim=-1)
+        
         return (x_prefix, dummy_prefix), (dummy_tokens, dummy_mask), text, input_id, item
     
 ## To get stuff:
