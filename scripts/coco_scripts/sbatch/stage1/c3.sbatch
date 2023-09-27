@@ -14,4 +14,4 @@
 #SBATCH --mail-user=esui@stanford.edu
 #SBATCH --mail-type=ALL
 
-bash $HOME/semi-supervised-CLIP-generation/scripts/coco_scripts/stage1/train_stage1_unimodal_c3.sh
+bash ./scripts/coco_scripts/stage1/train_stage1_unimodal_c3.sh

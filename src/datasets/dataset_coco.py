@@ -12,11 +12,11 @@ import clip
 from PIL import Image
 
 import pytorch_lightning as pl
-from transformers import GPT2Tokenizer
+from transformers import GPT2Tokenizer, AutoTokenizer
 from omegaconf import OmegaConf
 
 from ..enums import Modality
-from ..parse_data import TEXT_TO_IMG_GAP_PATH, TEXT_EMBED_MEAN, IMAGE_EMBED_MEAN
+from ..parse_data import TEXT_TO_IMG_GAP_PATH
 
 class ClipCocoDataset(pl.LightningDataModule):
 
@@ -35,7 +35,11 @@ class ClipCocoDataset(pl.LightningDataModule):
         
         data_path = self.get_data_path(cfg, split)
         
-        self.tokenizer = GPT2Tokenizer.from_pretrained(cfg.model.gpt2_type)
+        self.tokenizer = AutoTokenizer.from_pretrained(cfg.decoder.model) 
+        self.tokenizer.pad_token = self.tokenizer.eos_token
+        # self.tokenizer.add_special_tokens({"pad_token":"<pad>"})
+        # self.tokenizer = GPT2Tokenizer.from_pretrained(cfg.decoder.model)
+
         self.prefix_length = cfg.model.prefix_length
         self.normalize_prefix = cfg.model.normalize_prefix
         self.re_normalize_prefix = cfg.model.re_normalize_prefix
@@ -55,9 +59,9 @@ class ClipCocoDataset(pl.LightningDataModule):
         
         ###################
         
-        if os.path.isfile(f"{data_path[:-4]}_tokens.pkl"):
+        if os.path.isfile(f"{data_path[:-4]}_tokens_llama.pkl"):
             print("=> Loading caption_id_2_image_id, captions_tokens, all_len dicts")
-            with open(f"{data_path[:-4]}_tokens.pkl", 'rb') as f:
+            with open(f"{data_path[:-4]}_tokens_llama.pkl", 'rb') as f:
                 self.captions_tokens, self.caption_id_2_image_id, self.image_id_2_caption_ids, all_len = pickle.load(f)
         else:
             # {caption_id: image_id}
@@ -78,13 +82,13 @@ class ClipCocoDataset(pl.LightningDataModule):
             self.captions_tokens = {sentid: 
                                 torch.tensor(self.tokenizer.encode(
                                     self.captions[sentid]['caption']), 
-                                             dtype=torch.int64) for sentid in self.captions
-                               }
+                                                dtype=torch.int64) for sentid in self.captions
+                                }
             print("=> Saving all_len dict")
             all_len = torch.tensor([self.captions_tokens[sentid].shape[0] for sentid in self.captions_tokens]).float()
-            
-            with open(f"{data_path[:-4]}_tokens.pkl", 'wb') as f:
-                pickle.dump([self.captions_tokens, self.caption_id_2_image_id, self.image_id_2_caption_ids, all_len], f)
+        
+        with open(f"{data_path[:-4]}_tokens_llama.pkl", 'wb') as f:
+            pickle.dump([self.captions_tokens, self.caption_id_2_image_id, self.image_id_2_caption_ids, all_len], f)
         
         self.max_seq_len = min(int(all_len.mean() + all_len.std() * 10), int(all_len.max()))
     
@@ -128,19 +132,13 @@ class ClipCocoDataset(pl.LightningDataModule):
             self.text_to_img_modality_gap = pickle.load(f)
             
         # Load means gap
-        with open(TEXT_EMBED_MEAN, 'rb') as f:
+        with open(cfg.data.text_embed_mean_path, 'rb') as f:
             self.text_embed_mean = pickle.load(f)
             
-        with open(IMAGE_EMBED_MEAN, 'rb') as f:
+        with open(cfg.data.image_embed_mean_path, 'rb') as f:
             self.image_embed_mean = pickle.load(f)
         
-        ## Preprocess image to clip
-        device = 'cuda' if torch.cuda.is_available() else 'cpu'
-        _, self.preprocess_img = clip.load(self.cfg.encoder.clip_model_type, 
-                                           device=device, jit=False)
-        
-        
-        self.std = math.sqrt(0.016) # hyperparam from capdec paper
+        self.std = cfg.noise_level
         
     def get_data_path(self, cfg, split):
         if split == 'train':
@@ -195,8 +193,8 @@ class ClipCocoDataset(pl.LightningDataModule):
         img_id = self.caption_id_2_image_id[item]
         caption = self.captions[item]['caption']
         
-        img_prefix = self.images[img_id]["embed"].float()
-        text_prefix = self.captions[item]["embed"].float()
+        img_prefix = self.images[img_id]["embed"].float().squeeze()
+        text_prefix = self.captions[item]["embed"].float().squeeze()
         
         if self.normalize_prefix:
             img_prefix = img_prefix / img_prefix.norm(2, -1)
@@ -206,21 +204,15 @@ class ClipCocoDataset(pl.LightningDataModule):
             # note: the gap was computed as img - text
             img_prefix -= self.text_to_img_modality_gap 
         elif self.remove_mean:
-            img_prefix -= self.image_embed_mean
-            text_prefix -= self.text_embed_mean
+            img_prefix -= self.image_embed_mean.squeeze()
+            text_prefix -= self.text_embed_mean.squeeze()
         
         if self.add_gaussian_noise:
             img_prefix += torch.randn(img_prefix.shape) * self.std
             text_prefix += torch.randn(text_prefix.shape) * self.std
             
-        # Get output
-        if self.output_modality == Modality.Vision:
-            img_path = self.images[img_id]["img_path"]
-            image = io.imread(img_path)
-            label = self.preprocess_img(Image.fromarray(image))
-        else:
-            tokens, mask = self.pad_tokens(item)
-            label = (tokens, mask)
+        tokens, mask = self.pad_tokens(item)
+        label = (tokens, mask)
         
         # Re-normalize
         if self.re_normalize_prefix:
@@ -232,7 +224,7 @@ class ClipCocoDataset(pl.LightningDataModule):
     def get_item_per_image(self, item: int) -> Tuple[torch.Tensor, ...]:
         # this is for iterating over images (image captioning or image reconstruction)
         img_id = self.img_ids[item]
-        img_prefix = self.images[img_id]["embed"].float()
+        img_prefix = self.images[img_id]["embed"].float().squeeze()
 
         if self.normalize_prefix:
             img_prefix = img_prefix / img_prefix.norm(2, -1)
@@ -241,7 +233,7 @@ class ClipCocoDataset(pl.LightningDataModule):
             # note: the gap was computed as img - text
             img_prefix -= self.text_to_img_modality_gap 
         elif self.remove_mean:
-            img_prefix -= self.image_embed_mean
+            img_prefix -= self.image_embed_mean.squeeze()
 
         dummy_prefix = torch.zeros_like(img_prefix)
         dummy_tokens = torch.zeros(self.max_seq_len)

@@ -3,10 +3,13 @@ import os
 
 from src.eval.utils.caption_evaluate import evaluate_on_coco_caption
 
-def reformat_preds(raw_pred_file, refs_json, dir):
+NUM_REPEATS = 5
+
+def reformat_preds(raw_pred_file, dir):
     """
     Reformat predictions from list(zip([generations, originals])) to list({"image_id": ..., "caption": ..., "id": ...})
     """
+
     filename = os.path.split(raw_pred_file)[1][:-5]
 
     with open(raw_pred_file, "r") as f:
@@ -14,40 +17,30 @@ def reformat_preds(raw_pred_file, refs_json, dir):
     gens, refs = gens[0], refs[0]
     gens = [gen.replace("<|endoftext|>", "").strip() for gen in gens]
 
-    # Convert anns into dict of ref2img_id
-    ref2img_id_path = f"{dir}/ref2img_id.json"
+    new_labels_file = os.path.join(dir, 'new_labels.json')
 
-    if os.path.exists(ref2img_id_path):
-        with open(ref2img_id_path, 'r') as f:
-            ref2img_id = json.load(f)
+    if os.path.exists(new_labels_file):
+        with open(new_labels_file, 'r') as f:
+            labels = json.load(f)
     else:
-        with open(refs_json, "r") as f:
-            anns = json.load(f)["annotations"]
+        # Create new labels json file
+        labels, images = [], []
+        for i, ref in enumerate(refs):
+            img_id = i // NUM_REPEATS
+            entry = {"image_id": img_id, "caption": ref, "id": i}
+            img_entry = {"id": img_id}
+            labels.append(entry)
+            images.append(img_entry)
 
-        ref2img_id = {}
-        for ann in anns:
-            ref = ann['caption']
-            img_id = ann['image_id']
-            ref2img_id[ref] = img_id
-
-        with open(ref2img_id_path, 'w') as f:
-            json.dump(ref2img_id, f, indent=4)
-    
+        labels = {'annotations': labels, 'images': images}
+        with open(new_labels_file, 'w') as f:
+            json.dump(labels, f)
 
     preds = []
-    img_ids = []
-    for i, gen in enumerate(gens):
-        # find ref caption entry, get corresponding prediction
-        ref = refs[i]
-        img_id = ref2img_id[ref]
+    for i in range(len(gens) // NUM_REPEATS):
+        gen = gens[i*NUM_REPEATS]
 
-        if img_id in img_ids: # because an error for some reason, multiple captions for a single image used as GT
-            continue
-        else:
-            img_ids.append(img_id)
-
-        entry = {"image_id": img_id, "caption": gen, "id": i}
-
+        entry = {"image_id": i, "caption": gen, "id": i}
         preds.append(entry)
     
     new_pred_file = f'{dir}/{filename}_converted_preds.json'
@@ -57,13 +50,13 @@ def reformat_preds(raw_pred_file, refs_json, dir):
 
     print(f"New pred file: {new_pred_file}")
 
-    return new_pred_file
+    return new_pred_file, new_labels_file
 
 
-def run_eval(raw_pred_file, labels_json, out_file=None, dir=None):
-    new_pred_file = reformat_preds(raw_pred_file, labels_json, dir=dir)
+def run_eval(raw_pred_file, out_file=None, dir=None):
+    new_pred_file, new_labels_file = reformat_preds(raw_pred_file, dir=dir)
 
-    metrics_dict = evaluate_on_coco_caption(new_pred_file, labels_json, out_file)
+    metrics_dict = evaluate_on_coco_caption(new_pred_file, new_labels_file, out_file)
 
     print(metrics_dict)
     print(f"Metrics file at {out_file}")

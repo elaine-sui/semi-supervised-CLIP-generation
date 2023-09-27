@@ -3,6 +3,6 @@ python3 run.py \
     --normalize_prefix \
     --train \
     --test \
-    --val_eval \
     --cross_modal_val \
+    --val_eval \
     --re_normalize_prefix

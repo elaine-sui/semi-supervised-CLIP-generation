@@ -8,20 +8,26 @@ from .mlp import MLP
 from .transformer_mapper import TransformerMapper
 from ..enums import Modality, MappingType
 
+from transformers import LlamaForCausalLM
+
 """
 Code adapted from: https://github.com/rmokady/CLIP_prefix_caption/blob/main/train.py
 """
         
 class Decoder(nn.Module):
     
-    def __init__(self, cfg):
+    def __init__(self, cfg, tokenizer=None):
         super(Decoder, self).__init__()
         
         self.modality = cfg.decoder.modality.lower()
         
         if cfg.decoder.modality.lower() == Modality.Language:
-            self.model = build_huggingface_model(cfg.decoder.model.lower())
-            self.embed_size = self.model.transformer.wte.weight.shape[1]
+            self.model = build_huggingface_model(cfg.decoder.model, tokenizer)
+
+            if isinstance(self.model, LlamaForCausalLM):
+                self.embed_size = self.model.model.embed_tokens.weight.shape[1]
+            else:
+                self.embed_size = self.model.transformer.wte.weight.shape[1]
         else:
             raise NotImplementedError(
                 f"Decoder modality not implemented for {cfg.decoder.modality.lower()}"
@@ -38,10 +44,8 @@ class Decoder(nn.Module):
         elif cfg.model.mapping_type.lower() == MappingType.Transformer:
             self.clip_project = TransformerMapper(prefix_size, self.embed_size, 
                                                   self.prefix_length,
-                                                  cfg.model.prefix_length, 
+                                                  cfg.model.clip_size, 
                                                   cfg.model.num_layers)
-            # self.freeze_model_weights()
-            self.model.eval()
         elif cfg.model.mapping_type.lower() == MappingType.Linear:
             self.clip_project = nn.Linear(prefix_size, self.embed_size * self.prefix_length)
         else:
@@ -49,10 +53,14 @@ class Decoder(nn.Module):
     
         if not OmegaConf.is_none(cfg.model, "checkpoint"):
             self.load_from_checkpoint(cfg)
+        
+        if isinstance(self.model, LlamaForCausalLM):
+            self.freeze_model_weights()
             
-    # def freeze_model_weights(self):
-    #     for param in self.model.parameters():
-    #         param.requires_grad = False
+    def freeze_model_weights(self):
+        for param in self.model.parameters():
+            param.requires_grad = False
+        print("=> Froze decoder weights!")
     
     
     def load_from_checkpoint(self, cfg):
@@ -73,14 +81,21 @@ class Decoder(nn.Module):
     def forward_language(self, tokens: torch.Tensor, prefix: torch.Tensor, mask: Optional[torch.Tensor] = None,
                 labels: Optional[torch.Tensor] = None):
         
-        embedding_text = self.model.transformer.wte(tokens)
+        # import pdb; pdb.set_trace()
+
+        if isinstance(self.model, LlamaForCausalLM):
+            with torch.no_grad():
+                embedding_text = self.model.model.embed_tokens(tokens)
+        else:
+            embedding_text = self.model.transformer.wte(tokens)
         prefix_projections = self.clip_project(prefix).view(-1, self.prefix_length, self.embed_size) 
         embedding_cat = torch.cat((prefix_projections, embedding_text), dim=1)
         if labels is not None:
             dummy_token = self.get_dummy_token(tokens.shape[0], tokens.device)
             labels = torch.cat((dummy_token, tokens), dim=1)
 
-        out = self.model(inputs_embeds=embedding_cat, labels=labels, attention_mask=mask)
+        if isinstance(self.model, LlamaForCausalLM):
+            out = self.model(inputs_embeds=embedding_cat, labels=labels, attention_mask=mask)
         
         return out    
     

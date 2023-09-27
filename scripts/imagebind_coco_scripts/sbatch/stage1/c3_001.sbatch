@@ -2,17 +2,16 @@
 #SBATCH --partition=pasteur --qos=normal
 #SBATCH --time=24:00:00
 #SBATCH --nodes=1
-#SBATCH --exclude="pasteur1"
-#SBATCH --cpus-per-task=1
-#SBATCH --mem-per-cpu=16gb
+#SBATCH --cpus-per-task=8
+#SBATCH --mem-per-cpu=8gb
 #SBATCH --account=pasteur
-#SBATCH --gres=gpu:1
+#SBATCH --gres=gpu:a6000:1
 
-#SBATCH --job-name="c2_noise_1e-5"
+#SBATCH --job-name="imagebind_coco_c3_001"
 #SBATCH --output=logs/log-%j.out # STDOUT
 
 # only use the following if you want email notification
 #SBATCH --mail-user=esui@stanford.edu
 #SBATCH --mail-type=ALL
 
-bash $HOME/semi-supervised-CLIP-generation/scripts/video_scripts/train_stage1_unimodal_c2_noise_00001.sh
+bash ./scripts/imagebind_coco_scripts/stage1/train_stage1_unimodal_c3_001.sh

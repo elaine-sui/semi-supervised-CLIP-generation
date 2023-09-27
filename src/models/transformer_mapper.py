@@ -117,6 +117,7 @@ class TransformerMapper(nn.Module):
         x = self.linear(x).view(x.shape[0], self.clip_length, -1)
         prefix = self.prefix_const.unsqueeze(0).expand(x.shape[0], *self.prefix_const.shape)
         prefix = torch.cat((x, prefix), dim=1)
+
         out = self.transformer(prefix)[:, self.clip_length:]
         return out
 

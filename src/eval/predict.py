@@ -11,6 +11,8 @@ from typing import Tuple, List, Union, Optional
 import skimage.io as io
 import PIL.Image
 
+from transformers import LlamaForCausalLM
+
 torch.use_deterministic_algorithms(True, warn_only=True)
 
 def generate2(
@@ -62,7 +64,11 @@ def generate2(
                 indices_to_remove = sorted_indices[sorted_indices_to_remove]
                 logits[:, indices_to_remove] = filter_value
                 next_token = torch.argmax(logits, -1).unsqueeze(0)
-                next_token_embed = model.model.transformer.wte(next_token)
+
+                if isinstance(model, LlamaForCausalLM):
+                    next_token_embed = model.model.transformer.wte(next_token)
+                else:
+                    next_token_embed = model.model.model.embed_tokens(next_token)
                 if tokens is None:
                     tokens = next_token
                 else:

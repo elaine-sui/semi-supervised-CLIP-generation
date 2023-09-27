@@ -5,6 +5,6 @@ python3 run.py \
     --remove_mean \
     --train \
     --test \
-    --val_eval \
     --cross_modal_val \
+    --val_eval \
     --re_normalize_prefix

@@ -20,11 +20,15 @@ def flatten(d, parent_key="", sep="."):
             items.append((new_key, v))
     return dict(items)
 
-def get_pred_filename(output_dir, split, epoch=None):
+def get_pred_filename(output_dir, split, epoch=None, rank=0, temp=False):
     if epoch:
-        return os.path.join(output_dir, f'{split}_epoch_{epoch}_pred.json')
+        if temp:
+            return os.path.join(output_dir, f'{split}_epoch_{epoch}_pred_rank{rank}_temp.pkl')
+        return os.path.join(output_dir, f'{split}_epoch_{epoch}_pred_rank{rank}.json')
     else:
-        return os.path.join(output_dir, f'{split}_pred.json')
+        if temp:
+            return os.path.join(output_dir, f'{split}_pred_rank{rank}_temp.pkl')
+        return os.path.join(output_dir, f'{split}_pred_rank{rank}.json')
 
 def get_metrics_out_filename(output_dir, split, epoch=None):
     if epoch:
@@ -33,10 +37,11 @@ def get_metrics_out_filename(output_dir, split, epoch=None):
         return os.path.join(output_dir, f'{split}_metrics.json')
 
 
-def add_predictions_to_results_json(predictions, output_dir, split, epoch):
+def add_predictions_to_results_json(predictions, filepath):
     
-    os.makedirs(output_dir, exist_ok=True)
-    filepath = get_pred_filename(output_dir, split, epoch)
+    parent_dir = os.path.pardir(filepath)
+    os.makedirs(parent_dir, exist_ok=True)
+    # filepath = get_pred_filename(output_dir, split, epoch, rank)
     all_preds = []
     # if os.path.exists(filepath):
     #     with open(filepath, 'r') as f:

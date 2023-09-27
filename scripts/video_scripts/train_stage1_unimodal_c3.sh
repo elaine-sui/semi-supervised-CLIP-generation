@@ -6,5 +6,4 @@ python3 run.py \
     --train \
     --test \
     --val_eval \
-    --cross_modal_val \
-    --re_normalize_prefix
+    --cross_modal_val

@@ -1,12 +1,15 @@
+import os
+os.environ['XDG_CACHE_HOME'] = '/pasteur/u/esui/.cache'
+
 import argparse
 import torch
 import datetime
-import os
 import numpy as np
 import wandb
 import yaml
 import math
 from copy import copy
+import random
 
 from src import utils, builder
 
@@ -92,8 +95,8 @@ def parse_configs():
     parser.add_argument("--checkpoint", type=str, default=None)
     parser.add_argument("--output_dir", type=str, default="output")
 
-    parser.add_argument("--val_eval", action="store_true", help='whether to run evaluation over validation')
-    parser.add_argument("--cross_modal_val", action="store_true", help='whether to run cross-modal evaluation over validation')
+    parser.add_argument("--val_eval", action="store_true", help='whether to run evaluation metrics over the validation set after every training epoch')
+    parser.add_argument("--cross_modal_val", action="store_true", help='whether to run cross-modal evaluation over validation after every training epoch')
 
     parser.add_argument("--subsample_val_test", action="store_true")
 
@@ -171,6 +174,9 @@ def parse_configs():
     cfg.seed = args.random_seed
     seed_everything(args.random_seed)
 
+    random.seed(args.random_seed)
+    torch.manual_seed(args.random_seed)
+
     if cfg.checkpoint is None and not OmegaConf.is_none(cfg.model, "pretrain_ckpt"):
         cfg.checkpoint = cfg.model.pretrain_ckpt
     if cfg.checkpoint and "noise" in cfg.checkpoint:
@@ -214,24 +220,24 @@ def setup(cfg, test_split=False):
             loggers.append(logger)
             cfg.lightning.logger.logger_type = logger_type
 
-            if logger_type == "WandbLogger":
+            # if logger_type == "WandbLogger":
                 # set sweep defaults
-                hyperparameter_defaults = cfg.hyperparameters
-                run = logger.experiment
-                run.config.setdefaults(hyperparameter_defaults)
+                # hyperparameter_defaults = cfg.hyperparameters
+                # run = logger.experiment
+                # run.config.setdefaults(hyperparameter_defaults)
 
                 # update cfg with new sweep parameters
-                run_config = [f"{k}={v}" for k, v in run.config.items()]
-                run_config = OmegaConf.from_dotlist(run_config)
-                cfg = OmegaConf.merge(cfg, run_config)  # update defaults to CLI
+                # run_config = [f"{k}={v}" for k, v in run.config.items()]
+                # run_config = OmegaConf.from_dotlist(run_config)
+                # cfg = OmegaConf.merge(cfg, run_config)  # update defaults to CLI
 
                 # set best metric
-                if cfg.lightning.checkpoint_callback.mode == "max":
-                    goal = "maximize"
-                else:
-                    goal = "minimize"
-                metric = cfg.lightning.checkpoint_callback.monitor
-                wandb.define_metric(f"{metric}", summary="best", goal=goal)
+                # if cfg.lightning.checkpoint_callback.mode == "max":
+                #     goal = "maximize"
+                # else:
+                #     goal = "minimize"
+                # metric = cfg.lightning.checkpoint_callback.monitor
+                # wandb.define_metric(f"{metric}", summary="best", goal=goal)
 
         # callbacks
         callbacks = [LearningRateMonitor(logging_interval="step")]
