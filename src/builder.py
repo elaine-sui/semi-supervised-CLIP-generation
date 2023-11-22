@@ -72,5 +72,6 @@ def build_loss(cfg):
     else:
         loss_fn = losses.__dict__[name]
     
+    cfg.train.loss_fn.name = name
     return loss_fn
 

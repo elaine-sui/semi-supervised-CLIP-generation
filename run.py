@@ -27,6 +27,8 @@ from pytorch_lightning.callbacks import (
 )
 
 DATA_PREFIX = "/pasteur/u/esui"
+torch.set_float32_matmul_precision('high')
+os.environ['TOKENIZERS_PARALLELISM']='false'
 
 
 def parse_configs():
@@ -113,7 +115,7 @@ def parse_configs():
 
     args.gpus = torch.cuda.device_count()
     if args.gpus is not None:
-        cfg.lightning.trainer.gpus = str(args.gpus)
+        cfg.lightning.trainer.devices = str(args.gpus)
 
     cfg.val_eval = args.val_eval
     cfg.cross_modal_val = args.cross_modal_val
@@ -169,7 +171,7 @@ def parse_configs():
 
     # check debug
     if args.debug:
-        cfg.train.num_workers = 0
+        cfg.train.num_workers = 1
 
     cfg.seed = args.random_seed
     seed_everything(args.random_seed)
@@ -283,7 +285,6 @@ def setup(cfg, test_split=False):
 
     # setup pytorch-lightning trainer
     lr = cfg.lightning.trainer.pop('lr')
-    cfg.lightning.trainer.pop('gpus')
     trainer = Trainer(
         **cfg.lightning.trainer, deterministic=False, callbacks=callbacks, logger=loggers
     )  # note: determinstic is set to True in eval/predict.py with warn_only=True

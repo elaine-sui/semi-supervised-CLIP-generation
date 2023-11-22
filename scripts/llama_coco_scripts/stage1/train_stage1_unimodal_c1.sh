@@ -5,5 +5,4 @@ CUDA_VISIBLE_DEVICES=0 python3 run.py \
     --test \
     --cross_modal_val \
     --val_eval \
-    --re_normalize_prefix \
-    --debug
+    --re_normalize_prefix

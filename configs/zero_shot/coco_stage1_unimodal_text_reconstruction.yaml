@@ -3,7 +3,7 @@ experiment_name: 'coco_stage1_unimodal_text_reconstruction_train+restval'
 lightning:
   trainer:
     devices: -1
-    max_epochs: 50 #20
+    max_epochs: 10
     lr: 1e-3
     precision: 16
   checkpoint_callback:
@@ -45,7 +45,7 @@ data:
   image_embed_mean_path: '/pasteur/u/esui/data/coco/normalized_image_embed_mean.pkl'
     
 train: 
-  batch_size: 64
+  batch_size: 40
   num_workers: 8
   loss_fn: 
     name: 'ce_caption_loss'

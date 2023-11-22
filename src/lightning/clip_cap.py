@@ -69,18 +69,20 @@ class ClipCaptionLightningModel(pl.LightningModule):
 
     def get_prefix_and_labels(self, batch):
         prefix, labels, gold_caption, img_id, cap_id = batch
-        
-        if self.input_modality == Modality.Vision:
-            prefix = prefix[0]
-        elif self.input_modality == Modality.Language:
-            prefix = prefix[1]
-        else: # both
-            prefix = torch.cat(prefix, dim=0)
-            if self.output_modality == Modality.Language:
-                if labels is not None:
-                    labels = (labels[0].repeat((2, 1)), labels[1].repeat((2, 1)))
-                
+
         return prefix, labels
+        
+        # if self.input_modality == Modality.Vision:
+        #     prefix = prefix[0]
+        # elif self.input_modality == Modality.Language:
+        #     prefix = prefix[1]
+        # else: # both
+        #     prefix = torch.cat(prefix, dim=0)
+        #     if self.output_modality == Modality.Language:
+        #         if labels is not None:
+        #             labels = (labels[0].repeat((2, 1)), labels[1].repeat((2, 1)))
+                
+        # return prefix, labels
         
     
     def shared_loss_step(self, batch, split):
@@ -171,9 +173,8 @@ class ClipCaptionLightningModel(pl.LightningModule):
     def on_test_epoch_end(self):   
         self.shared_epoch_end(self.test_step_outputs, 'test') 
         self.test_step_outputs.clear()
-
+    
     def shared_epoch_end(self, outputs, split):   
-        # import pdb; pdb.set_trace() 
         # Write predictions to json
         if split == 'test':
             split = self.cfg.test_split 
@@ -181,42 +182,67 @@ class ClipCaptionLightningModel(pl.LightningModule):
         epoch = self.current_epoch if self.current_epoch else 0
         
         # Compute eval metrics
-        pred_file = get_pred_filename(self.cfg.output_dir, split, epoch=epoch, rank=self.local_rank)
+        pred_file = get_pred_filename(self.cfg.output_dir, split, epoch=epoch)
         
         add_predictions_to_results_json(predictions=outputs, 
                                         filepath=pred_file)
         
         print(f"=> Predictions at {pred_file}")
 
-        # dist.barrier()
+        out_file = get_metrics_out_filename(self.cfg.output_dir, split, epoch=epoch)
+        if self.cfg.data.dataset == 'coco':
+            metrics_dict = evaluate_on_coco_caption(pred_file, LABELS_JSONS_LST[split], out_file)
 
-        if self.local_rank == 0: # combine all the predictions in a single pred file
-            # all_preds = []
-            # for i in [0]: #range(dist.get_world_size()):
-            #     pred_file = get_pred_filename(self.cfg.output_dir, split, epoch=epoch, rank=i)
+        print(f"=> Metrics at {out_file}")
+        
+        # Log eval metrics
+        for k, v in metrics_dict.items():
+            self.log(f"{split}/{k}", v, on_epoch=True, logger=True, prog_bar=True)
 
-            #     with open(pred_file, 'r') as f:
-            #         all_preds.extend(json.load(f))
+
+    # def shared_epoch_end(self, outputs, split):   
+    #     # import pdb; pdb.set_trace() 
+    #     # Write predictions to json
+    #     if split == 'test':
+    #         split = self.cfg.test_split 
+
+    #     epoch = self.current_epoch if self.current_epoch else 0
+        
+    #     # Compute eval metrics
+    #     pred_file = get_pred_filename(self.cfg.output_dir, split, epoch=epoch, rank=self.local_rank)
+        
+    #     add_predictions_to_results_json(predictions=outputs, 
+    #                                     filepath=pred_file)
+        
+    #     print(f"=> Predictions at {pred_file}")
+
+    #     # dist.barrier()
+
+    #     if self.local_rank == 0: # combine all the predictions in a single pred file
+    #         all_preds = []
+    #         for i in [0]: #range(dist.get_world_size()):
+    #             pred_file = get_pred_filename(self.cfg.output_dir, split, epoch=epoch, rank=i)
+
+    #             with open(pred_file, 'r') as f:
+    #                 all_preds.extend(json.load(f))
             
-            # pred_file = get_pred_filename(self.cfg.output_dir, split, epoch=epoch, rank='full')
-            
-            all_preds = preds
+    #         pred_file = get_pred_filename(self.cfg.output_dir, split, epoch=epoch, rank='full')
 
-            add_predictions_to_results_json(predictions=all_preds, 
-                                        filepath=pred_file)
+    #         add_predictions_to_results_json(predictions=all_preds, 
+    #                                     filepath=pred_file)
 
-            out_file = get_metrics_out_filename(self.cfg.output_dir, split, epoch=epoch)
-            if self.cfg.data.dataset == 'coco':
-                metrics_dict = evaluate_on_coco_caption(pred_file, LABELS_JSONS_LST[split], out_file)
-            else:
-                metrics_dict = evaluate_on_coco_caption(pred_file, get_label_json_list(self.cfg.data.dataset)[split], out_file)
+    #         out_file = get_metrics_out_filename(self.cfg.output_dir, split, epoch=epoch)
+    #         if self.cfg.data.dataset == 'coco':
+    #             metrics_dict = evaluate_on_coco_caption(pred_file, LABELS_JSONS_LST[split], out_file)
+    #         else:
+    #             metrics_dict = evaluate_on_coco_caption(pred_file, get_label_json_list(self.cfg.data.dataset)[split], out_file)
             
-            print(f"=> Metrics at {out_file}")
+    #         print(f"=> Metrics at {out_file}")
             
-            # Log eval metrics
-            for k, v in metrics_dict.items():
-                self.log(f"{split}/{k}", v, on_epoch=True, logger=True, prog_bar=True)
+    #         # Log eval metrics
+    #         for k, v in metrics_dict.items():
+    #             self.log(f"{split}/{k}", v, on_epoch=True, logger=True, prog_bar=True)
 
-        # dist.barrier()
+    #     # dist.barrier()
             
     

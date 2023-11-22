@@ -1,5 +1,5 @@
 python3 run.py \
-    --config configs/zero_shot/coco_stage1_unimodal_text_reconstruction.yaml \
+    --config configs/zero_shot/coco_stage1_og.yaml \
     --normalize_prefix \
     --add_gaussian_noise \
     --train \

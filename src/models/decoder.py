@@ -94,8 +94,7 @@ class Decoder(nn.Module):
             dummy_token = self.get_dummy_token(tokens.shape[0], tokens.device)
             labels = torch.cat((dummy_token, tokens), dim=1)
 
-        if isinstance(self.model, LlamaForCausalLM):
-            out = self.model(inputs_embeds=embedding_cat, labels=labels, attention_mask=mask)
+        out = self.model(inputs_embeds=embedding_cat, labels=labels, attention_mask=mask)
         
         return out    
     

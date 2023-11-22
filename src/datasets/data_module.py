@@ -25,6 +25,7 @@ class DataModule(pl.LightningDataModule):
             shuffle=True,
             batch_size=self.cfg.train.batch_size,
             num_workers=self.cfg.train.num_workers,
+            prefetch_factor=1
         )
 
     def val_dataloader(self):
@@ -37,6 +38,7 @@ class DataModule(pl.LightningDataModule):
             shuffle=False,
             batch_size=bs,
             num_workers=self.cfg.train.num_workers,
+            prefetch_factor=1
         )
 
     def test_dataloader(self):
@@ -62,6 +64,7 @@ class DataModule(pl.LightningDataModule):
             shuffle=False,
             batch_size=batch_size,
             num_workers=1,
+            prefetch_factor=1
         )
 
     def all_dataloader(self):
@@ -76,4 +79,5 @@ class DataModule(pl.LightningDataModule):
             drop_last=False,
             batch_size=self.cfg.train.batch_size,
             num_workers=self.cfg.train.num_workers,
+            prefetch_factor=1
         )

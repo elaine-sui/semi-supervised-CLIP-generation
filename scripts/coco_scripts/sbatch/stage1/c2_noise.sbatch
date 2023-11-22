@@ -5,7 +5,7 @@
 #SBATCH --cpus-per-task=1
 #SBATCH --mem-per-cpu=16gb
 #SBATCH --account=pasteur
-#SBATCH --gres=gpu:1
+#SBATCH --gres=gpu:titanrtx:1
 
 #SBATCH --job-name="coco_c2_noise"
 #SBATCH --output=logs/log-%j.out # STDOUT

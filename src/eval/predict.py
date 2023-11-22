@@ -65,10 +65,7 @@ def generate2(
                 logits[:, indices_to_remove] = filter_value
                 next_token = torch.argmax(logits, -1).unsqueeze(0)
 
-                if isinstance(model, LlamaForCausalLM):
-                    next_token_embed = model.model.transformer.wte(next_token)
-                else:
-                    next_token_embed = model.model.model.embed_tokens(next_token)
+                next_token_embed = model.model.transformer.wte(next_token)
                 if tokens is None:
                     tokens = next_token
                 else:
